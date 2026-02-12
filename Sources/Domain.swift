@@ -18,9 +18,29 @@ enum ProviderErrorState: Error, Sendable, Equatable {
         switch self {
         case .authNeeded: return "Auth needed"
         case .tokenExpired: return "Token expired"
-        case .endpointError: return "API error"
+        case .endpointError(let message):
+            let lowered = message.lowercased()
+            if lowered.contains("401") || lowered.contains("403") || lowered.contains("rejected") || lowered.contains("invalid") {
+                return "Auth needed"
+            }
+            return "API error"
         case .parseError: return "Parse error"
         case .networkError: return "Network error"
+        }
+    }
+
+    var detailText: String? {
+        switch self {
+        case .authNeeded:
+            return "Add credentials to fetch usage"
+        case .tokenExpired:
+            return "Token expired, update Claude auth"
+        case .endpointError(let message):
+            return message
+        case .parseError(let message):
+            return message
+        case .networkError(let message):
+            return message
         }
     }
 }

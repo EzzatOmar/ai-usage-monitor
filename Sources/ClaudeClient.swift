@@ -5,31 +5,72 @@ struct ClaudeClient: ProviderClient {
 
     func fetchUsage(now: Date) async -> ProviderUsageResult {
         do {
-            let credentials = try Self.loadCredentials()
-            if let expiresAt = credentials.expiresAt, expiresAt <= Date() {
-                throw ProviderErrorState.tokenExpired
+            let candidates = try Self.loadCredentialCandidates()
+            guard !candidates.isEmpty else {
+                throw ProviderErrorState.authNeeded
             }
-            let response = try await Self.fetchUsage(accessToken: credentials.accessToken)
+
+            var sawSetupToken401 = false
+            var lastProviderError: ProviderErrorState?
+
+            for candidate in candidates {
+                if let expiresAt = candidate.expiresAt, expiresAt <= Date() {
+                    lastProviderError = .tokenExpired
+                    continue
+                }
+
+                do {
+                    let response = try await Self.fetchUsage(accessToken: candidate.accessToken)
+                    return ProviderUsageResult(
+                        provider: .claude,
+                        primaryWindow: response.fiveHour?.asWindow,
+                        secondaryWindow: response.sevenDay?.asWindow,
+                        accountLabel: candidate.rateLimitTier,
+                        lastUpdated: now,
+                        errorState: nil,
+                        isStale: false
+                    )
+                } catch let error as ProviderErrorState {
+                    lastProviderError = error
+                    if case .tokenExpired = error, candidate.source == .pastedSetupToken {
+                        sawSetupToken401 = true
+                    }
+                    continue
+                }
+            }
+
+            if sawSetupToken401 {
+                throw ProviderErrorState.endpointError("Setup token was rejected by Claude usage API")
+            }
+
+            throw lastProviderError ?? ProviderErrorState.authNeeded
+        } catch let error as ProviderErrorState {
             return ProviderUsageResult(
                 provider: .claude,
-                primaryWindow: response.fiveHour?.asWindow,
-                secondaryWindow: response.sevenDay?.asWindow,
-                accountLabel: credentials.rateLimitTier,
+                primaryWindow: nil,
+                secondaryWindow: nil,
+                accountLabel: nil,
                 lastUpdated: now,
-                errorState: nil,
+                errorState: error,
                 isStale: false
             )
-        } catch let error as ProviderErrorState {
-            return ProviderUsageResult(provider: .claude, primaryWindow: nil, secondaryWindow: nil, accountLabel: nil, lastUpdated: now, errorState: error, isStale: false)
         } catch {
             return ProviderUsageResult(provider: .claude, primaryWindow: nil, secondaryWindow: nil, accountLabel: nil, lastUpdated: now, errorState: .networkError(error.localizedDescription), isStale: false)
         }
+    }
+
+    private enum CredentialSource {
+        case pastedSetupToken
+        case keychain
+        case credentialFile
+        case environment
     }
 
     private struct Credentials {
         let accessToken: String
         let expiresAt: Date?
         let rateLimitTier: String?
+        let source: CredentialSource
     }
 
     private struct RootCredentials: Decodable {
@@ -67,54 +108,55 @@ struct ClaudeClient: ProviderClient {
         }
     }
 
-    private static func loadCredentials() throws -> Credentials {
-        let path = LocalPaths.claudeCredentialsPath()
-        if FileManager.default.fileExists(atPath: path.path) {
-            let data = try Data(contentsOf: path)
-            if let root = try? JSONDecoder().decode(RootCredentials.self, from: data),
-               let oauth = root.claudeAiOauth,
-               let token = oauth.accessToken,
-               !token.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            {
-                let expiresAt = oauth.expiresAt.map { Date(timeIntervalSince1970: $0 / 1000.0) }
-                return Credentials(accessToken: token, expiresAt: expiresAt, rateLimitTier: oauth.rateLimitTier)
+    private static func loadCredentialCandidates() throws -> [Credentials] {
+        var candidates: [Credentials] = []
+
+        if let keychainToken = AuthStore.readClaudeTokenFromKeychainIfEnabled() {
+            candidates.append(Credentials(accessToken: keychainToken, expiresAt: nil, rateLimitTier: "Claude CLI", source: .keychain))
+        }
+
+        if let pastedToken = AuthStore.loadClaudeSetupToken() {
+            candidates.append(Credentials(accessToken: pastedToken, expiresAt: nil, rateLimitTier: "Setup token", source: .pastedSetupToken))
+        }
+
+        for path in self.claudeCredentialPaths() {
+            if FileManager.default.fileExists(atPath: path.path) {
+                let data = try Data(contentsOf: path)
+                if let root = try? JSONDecoder().decode(RootCredentials.self, from: data),
+                   let oauth = root.claudeAiOauth,
+                   let token = oauth.accessToken,
+                   !token.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                {
+                    let expiresAt = oauth.expiresAt.map { Date(timeIntervalSince1970: $0 / 1000.0) }
+                    candidates.append(Credentials(accessToken: token, expiresAt: expiresAt, rateLimitTier: oauth.rateLimitTier, source: .credentialFile))
+                }
+
+                if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let directToken = json["accessToken"] as? String,
+                   !directToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                {
+                    candidates.append(Credentials(accessToken: directToken, expiresAt: nil, rateLimitTier: "Claude CLI", source: .credentialFile))
+                }
             }
         }
 
-        if let setupToken = Self.loadSetupTokenFromCLI() {
-            return Credentials(accessToken: setupToken, expiresAt: nil, rateLimitTier: "Setup token")
+        if let envToken = ProcessInfo.processInfo.environment["CLAUDE_ACCESS_TOKEN"]?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+            !envToken.isEmpty
+        {
+            candidates.append(Credentials(accessToken: envToken, expiresAt: nil, rateLimitTier: "Environment", source: .environment))
         }
 
-        throw ProviderErrorState.authNeeded
+        return candidates
     }
 
-    private static func loadSetupTokenFromCLI() -> String? {
-        let output: String
-        do {
-            output = try CommandRunner.run("/usr/bin/env", arguments: ["claude", "setup-token"], timeout: 8)
-        } catch {
-            return nil
-        }
-        return self.parseSetupToken(output)
-    }
-
-    private static func parseSetupToken(_ output: String) -> String? {
-        let lines = output
-            .components(separatedBy: .newlines)
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-
-        if let tokenLine = lines.first(where: { $0.lowercased().contains("setup-token") || $0.lowercased().contains("token") }) {
-            let parts = tokenLine.components(separatedBy: CharacterSet.whitespaces)
-            if let token = parts.last, token.count >= 20 {
-                return token
-            }
-        }
-
-        if let fallback = lines.last, fallback.count >= 20 {
-            return fallback
-        }
-        return nil
+    private static func claudeCredentialPaths() -> [URL] {
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        return [
+            home.appendingPathComponent(".claude").appendingPathComponent(".credentials.json"),
+            home.appendingPathComponent(".claude").appendingPathComponent("credentials.json"),
+            home.appendingPathComponent(".config").appendingPathComponent("claude").appendingPathComponent("credentials.json"),
+        ]
     }
 
     private static func fetchUsage(accessToken: String) async throws -> OAuthUsageResponse {
@@ -141,7 +183,13 @@ struct ClaudeClient: ProviderClient {
         case 401, 403:
             throw ProviderErrorState.tokenExpired
         default:
-            throw ProviderErrorState.endpointError("HTTP \(http.statusCode)")
+            let body = String(data: data, encoding: .utf8)?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .prefix(180) ?? ""
+            if body.isEmpty {
+                throw ProviderErrorState.endpointError("HTTP \(http.statusCode)")
+            }
+            throw ProviderErrorState.endpointError("HTTP \(http.statusCode): \(body)")
         }
     }
 
@@ -162,10 +210,6 @@ extension ClaudeClient {
     static func decodeUsageResponse(_ data: Data) throws -> (Double?, Double?) {
         let decoded = try JSONDecoder().decode(OAuthUsageResponse.self, from: data)
         return (decoded.fiveHour?.utilization, decoded.sevenDay?.utilization)
-    }
-
-    static func parseSetupTokenOutput(_ output: String) -> String? {
-        self.parseSetupToken(output)
     }
 }
 #endif

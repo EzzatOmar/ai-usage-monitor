@@ -50,10 +50,4 @@ final class ProviderDecodingTests: XCTestCase {
         XCTAssertEqual(primary ?? 0, 60, accuracy: 0.0001)
         XCTAssertEqual(secondary ?? 0, 30, accuracy: 0.0001)
     }
-
-    func test_claudeSetupTokenParser() {
-        let output = "Generated setup-token:\nclstp_abcdefghijklmnopqrstuvwxyz1234567890"
-        let token = ClaudeClient.parseSetupTokenOutput(output)
-        XCTAssertEqual(token, "clstp_abcdefghijklmnopqrstuvwxyz1234567890")
-    }
 }

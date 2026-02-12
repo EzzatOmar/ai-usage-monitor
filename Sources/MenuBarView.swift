@@ -16,10 +16,51 @@ struct MenuBarRootView: View {
             }
 
             ForEach(ProviderID.allCases, id: \.self) { provider in
-                ProviderRow(result: self.model.snapshot.results.first(where: { $0.provider == provider }), provider: provider)
+                ProviderRow(
+                    result: self.model.snapshot.results.first(where: { $0.provider == provider }),
+                    provider: provider,
+                    onClaudeSetup: { self.model.openClaudeTokenEditor() },
+                    onClaudeKeychainAccess: { self.model.enableClaudeKeychainAccess() },
+                    claudeKeychainEnabled: self.model.claudeKeychainEnabled,
+                    onZAISetup: { self.model.openZAIKeyEditor() }
+                )
             }
 
             Divider()
+
+            if self.model.showClaudeTokenEditor {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Claude setup token")
+                        .font(.caption.weight(.semibold))
+                    Text("Run `claude setup-token`, then paste the token here.")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    SecureField("setup-token", text: self.$model.claudeSetupTokenInput)
+                        .textFieldStyle(.roundedBorder)
+                    HStack {
+                        Button("Cancel") { self.model.cancelClaudeTokenEditor() }
+                        Spacer()
+                        Button("Save") { self.model.saveClaudeToken() }
+                    }
+                }
+            }
+
+            if self.model.showZAIKeyEditor {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Set Z.AI API key")
+                        .font(.caption.weight(.semibold))
+                    Text("Paste your Z.AI key from the Z.AI console.")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    SecureField("ZAI_API_KEY", text: self.$model.zaiAPIKeyInput)
+                        .textFieldStyle(.roundedBorder)
+                    HStack {
+                        Button("Cancel") { self.model.cancelZAIKeyEditor() }
+                        Spacer()
+                        Button("Save") { self.model.saveZAIKey() }
+                    }
+                }
+            }
 
             HStack {
                 Text("Updated \(RelativeTimeFormatter.lastUpdatedText(self.model.snapshot.lastUpdated))")
@@ -39,6 +80,10 @@ struct MenuBarRootView: View {
 private struct ProviderRow: View {
     let result: ProviderUsageResult?
     let provider: ProviderID
+    let onClaudeSetup: () -> Void
+    let onClaudeKeychainAccess: () -> Void
+    let claudeKeychainEnabled: Bool
+    let onZAISetup: () -> Void
 
     var body: some View {
         HStack(alignment: .firstTextBaseline) {
@@ -55,6 +100,14 @@ private struct ProviderRow: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
+
+                    if let errorDetail = result.errorState?.detailText {
+                        Text(errorDetail)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
+
                     if result.isStale {
                         Text("Using last known data")
                             .font(.caption2)
@@ -70,12 +123,37 @@ private struct ProviderRow: View {
             Spacer()
 
             if let badge = self.result?.errorState?.badgeText {
-                Text(badge)
-                    .font(.caption2)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(Color.red.opacity(0.12), in: Capsule())
-                    .foregroundStyle(.red)
+                VStack(alignment: .trailing, spacing: 5) {
+                    Text(badge)
+                        .font(.caption2)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(Color.red.opacity(0.12), in: Capsule())
+                        .foregroundStyle(.red)
+
+                    if self.provider == .claude, self.result?.errorState != nil {
+                        HStack(spacing: 8) {
+                            Button("Paste token") {
+                                self.onClaudeSetup()
+                            }
+                            .font(.caption2)
+
+                            if !self.claudeKeychainEnabled {
+                                Button("Allow keychain") {
+                                    self.onClaudeKeychainAccess()
+                                }
+                                .font(.caption2)
+                            }
+                        }
+                    }
+
+                    if badge == "Auth needed", self.provider == .zai {
+                        Button("Set key") {
+                            self.onZAISetup()
+                        }
+                        .font(.caption2)
+                    }
+                }
             }
         }
     }

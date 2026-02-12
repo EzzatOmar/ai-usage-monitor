@@ -8,6 +8,11 @@ final class MenuBarViewModel {
     private var listenTask: Task<Void, Never>?
 
     var snapshot: UsageSnapshot = .empty
+    var claudeKeychainEnabled: Bool = AuthStore.isClaudeKeychainEnabled()
+    var claudeSetupTokenInput: String = ""
+    var showClaudeTokenEditor: Bool = false
+    var zaiAPIKeyInput: String = ""
+    var showZAIKeyEditor: Bool = false
 
     init(store: UsageStore) {
         self.store = store
@@ -32,6 +37,52 @@ final class MenuBarViewModel {
         Task {
             await self.store.refreshNow()
         }
+    }
+
+    func openClaudeTokenEditor() {
+        self.claudeSetupTokenInput = AuthStore.loadClaudeSetupToken() ?? ""
+        self.showClaudeTokenEditor = true
+    }
+
+    func saveClaudeToken() {
+        let trimmed = self.claudeSetupTokenInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            AuthStore.clearClaudeSetupToken()
+        } else {
+            _ = AuthStore.saveClaudeSetupToken(trimmed)
+        }
+        self.showClaudeTokenEditor = false
+        self.refreshNow()
+    }
+
+    func enableClaudeKeychainAccess() {
+        AuthStore.setClaudeKeychainEnabled(true)
+        self.claudeKeychainEnabled = true
+        self.refreshNow()
+    }
+
+    func cancelClaudeTokenEditor() {
+        self.showClaudeTokenEditor = false
+    }
+
+    func openZAIKeyEditor() {
+        self.zaiAPIKeyInput = AuthStore.loadZAIAPIKey() ?? ""
+        self.showZAIKeyEditor = true
+    }
+
+    func saveZAIKey() {
+        let trimmed = self.zaiAPIKeyInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            AuthStore.clearZAIAPIKey()
+        } else {
+            _ = AuthStore.saveZAIAPIKey(trimmed)
+        }
+        self.showZAIKeyEditor = false
+        self.refreshNow()
+    }
+
+    func cancelZAIKeyEditor() {
+        self.showZAIKeyEditor = false
     }
 
     private func start() {
