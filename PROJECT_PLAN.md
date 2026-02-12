@@ -131,8 +131,40 @@ Implement one adapter per provider with a common output model:
 
 ## 8) Definition of Done
 
-- App runs as menu bar utility.
-- Polling runs every 60s.
-- Each provider shows quota/reset or explicit per-provider error.
-- No primary dependency on interactive CLI screen scraping.
-- DMG build path documented and reproducible.
+- ~~App runs as menu bar utility.~~ ✓ Completed
+- ~~Polling runs every 60s.~~ ✓ Completed
+- ~~Each provider shows quota/reset or explicit per-provider error.~~ ✓ Completed
+- ~~No primary dependency on interactive CLI screen scraping.~~ ✓ Completed - uses direct APIs
+- ~~DMG build path documented and reproducible.~~ ✓ Completed
+
+## 9) Implementation Status (as of commit 347a59c)
+
+All MVP features from Phase 1-6 are complete and operational:
+
+### Completed Phases
+- **Phase 1**: Scaffolded macOS SwiftPM app project + package setup ✓
+- **Phase 2**: Implemented API clients for all providers with unit tests ✓
+- **Phase 3**: Built polling store + compact SwiftUI menu bar UI ✓
+- **Phase 4**: Integrated status icon and error handling ✓
+- **Phase 5**: Added build/install docs + DMG packaging script ✓
+- **Phase 6**: End-to-end local verification completed ✓
+
+### Additional Enhancements
+- **Claude auth**: Multi-source credential discovery with keychain opt-in
+  - Reads from: keychain (opt-in), credential files, `CLAUDE_ACCESS_TOKEN`, or pasted setup-token
+  - Graceful fallback through sources if one fails
+  - UI shows detailed error messages (HTTP status + body snippet)
+- **Z.AI auth & quota**: Full implementation
+  - Inline key editor to paste API key
+  - Fetches quota limits from `/api/monitor/usage/quota/limit`
+  - Fetches weekly usage from `/api/monitor/usage/model-usage`
+  - Env variable fallbacks: `ZAI_API_KEY`, `ZAI_KEY`, `ZHIPU_API_KEY`, `ZHIPUAI_API_KEY`
+
+### Current State
+App is fully functional as a menu bar utility:
+- Polls every 60s across all providers concurrently
+- Shows Claude, Codex, Gemini, and Z.AI usage data
+- Handles auth errors gracefully with inline "fix" buttons
+- Persisted auth via UserDefaults (no keychain required)
+- Error messages now show specific failure details (HTTP codes, API responses)
+- All tests passing (`swift test`)
