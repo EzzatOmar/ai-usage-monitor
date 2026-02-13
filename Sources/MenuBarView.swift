@@ -120,6 +120,12 @@ private struct ProviderRow: View {
                             .foregroundStyle(.secondary)
                     }
 
+                    if let secondary = result.secondaryWindow {
+                        Text("Weekly: \(Int(secondary.remainingPercent.rounded()))% left - \(RelativeTimeFormatter.resetText(secondary.resetAt))")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
+
                     if let errorDetail = result.errorState?.detailText {
                         Text(errorDetail)
                             .font(.caption2)
