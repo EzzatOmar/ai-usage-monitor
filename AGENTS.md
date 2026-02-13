@@ -90,7 +90,15 @@ let store = UsageStore(clients: [StubClient(...)])
 - Claude: CLAUDE_ACCESS_TOKEN
 - Codex: CODEX_HOME (custom path)
 - Z.AI: ZAI_API_KEY, ZAI_KEY, ZHIPU_API_KEY, ZHIPUAI_API_KEY
+- Cerebras: CEREBRAS_API_KEY
 - Access: ProcessInfo.processInfo.environment
+
+### Provider-Specific Notes
+- **Claude**: Keychain-only auth (opt-in). Token auto-expires; user must run `claude` CLI to refresh.
+- **Codex**: Has primary (5h) and secondary (weekly) windows from `/wham/usage` API.
+- **Gemini**: Uses `loadCodeAssist` + `retrieveUserQuota` APIs with OAuth refresh.
+- **Z.AI**: API key stored in UserDefaults; quota from `/api/monitor/usage/quota/limit`.
+- **Cerebras**: API key auth; rate limits parsed from response headers.
 
 ### Debug (#if DEBUG)
 - Add static decodeUsageResponse() methods for testing

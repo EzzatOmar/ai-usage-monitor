@@ -163,8 +163,27 @@ All MVP features from Phase 1-6 are complete and operational:
 ### Current State
 App is fully functional as a menu bar utility:
 - Polls every 60s across all providers concurrently
-- Shows Claude, Codex, Gemini, and Z.AI usage data
+- Shows Claude, Codex, Gemini, Z.AI, and Cerebras usage data
 - Handles auth errors gracefully with inline "fix" buttons
 - Persisted auth via UserDefaults (no keychain required)
 - Error messages now show specific failure details (HTTP codes, API responses)
 - All tests passing (`swift test`)
+
+## 10) Recent Fixes & Enhancements (commits 347a59c..f89140e)
+
+### Bug Fixes
+- **Claude utilization parsing**: API returns percentage (5.0 = 5%), not decimal (0.05). Fixed multiplier.
+- **Z.AI quota parsing**: Now uses `percentage` field directly from API instead of calculating from `currentValue/usage`.
+- **Claude error messages**: Shows "Run 'claude' in terminal to refresh token" when keychain token expires.
+
+### UI Improvements
+- **Weekly usage display**: Secondary window (weekly limits) now shown for Codex and other providers.
+- **Quit button**: Added to menu bar for easy app termination.
+- **Simplified Claude auth**: Removed setup token input - keychain only with single "Allow keychain" button.
+
+### Provider Updates
+- **Cerebras**: Added as new provider with API key authentication and rate limit header parsing.
+
+### Auth Improvements
+- **Claude keychain**: Now reads full credentials including `expiresAt`, `refreshToken`, `rateLimitTier` for better error handling.
+- **Z.AI**: API key stored in UserDefaults, fetched from environment variables as fallback.
