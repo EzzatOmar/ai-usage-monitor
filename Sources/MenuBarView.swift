@@ -79,7 +79,7 @@ struct MenuBarRootView: View {
                 Button {
                     self.model.triggerUpdate()
                 } label: {
-                    Label("Update to \(version)", systemImage: "arrow.down.circle.fill")
+                    Label("Download & Restart (\(version))", systemImage: "arrow.down.circle.fill")
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)

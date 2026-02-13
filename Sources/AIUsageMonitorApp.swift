@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 
+@MainActor
 @main
 struct AIUsageMonitorApp: App {
     @State private var model = MenuBarViewModel(

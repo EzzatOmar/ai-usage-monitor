@@ -28,7 +28,8 @@ actor UsageStore {
             self.continuations[id] = continuation
             continuation.yield(self.snapshot)
             continuation.onTermination = { [weak self] _ in
-                Task { await self?.removeContinuation(id: id) }
+                let actor = self
+                Task { await actor?.removeContinuation(id: id) }
             }
         }
     }
