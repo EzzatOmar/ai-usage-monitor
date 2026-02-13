@@ -122,9 +122,14 @@ struct ZAIClient: ProviderClient {
         var tokenWindow: UsageWindow?
         var requestWindow: UsageWindow?
         for item in quotaData.limits {
-            guard let usage = item.usage, usage > 0 else { continue }
-            let used = item.currentValue ?? 0
-            let usedPercent = item.percentage ?? ((used / usage) * 100)
+            let usedPercent: Double
+            if let pct = item.percentage {
+                usedPercent = pct
+            } else if let used = item.currentValue, let total = item.usage, total > 0 {
+                usedPercent = (used / total) * 100
+            } else {
+                continue
+            }
             let resetAt = item.nextResetTime.map { Date(timeIntervalSince1970: $0 / 1000.0) }
             let window = UsageWindow(usedPercent: max(0, min(100, usedPercent)), resetAt: resetAt, windowSeconds: nil)
             if item.type == "TOKENS_LIMIT" {
