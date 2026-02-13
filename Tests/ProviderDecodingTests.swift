@@ -51,19 +51,19 @@ final class ProviderDecodingTests: XCTestCase {
 
         let (primary, secondary, modelWindows) = try GeminiClient.decodeQuota(data)
 
-        // Primary = most-used pro model (gemini-2.5-pro at 60% used)
+        // Primary = most-used pro model (gemini-2.5-pro at 60% used) - Aggregates still include all models
         XCTAssertEqual(primary ?? 0, 60, accuracy: 0.0001)
         // Secondary = most-used flash model (gemini-3-flash-preview at 50% used)
         XCTAssertEqual(secondary ?? 0, 50, accuracy: 0.0001)
 
-        // All 5 models should have individual windows
-        XCTAssertEqual(modelWindows.count, 5)
+        // Only gemini-3 models should be in modelWindows
+        XCTAssertEqual(modelWindows.count, 2)
 
         // Verify each model is present with correct usage
         let byModel = Dictionary(uniqueKeysWithValues: modelWindows.map { ($0.modelId, $0.window) })
-        XCTAssertEqual(byModel["gemini-2.5-pro"]?.usedPercent ?? 0, 60, accuracy: 0.0001)
-        XCTAssertEqual(byModel["gemini-2.5-flash"]?.usedPercent ?? 0, 30, accuracy: 0.0001)
-        XCTAssertEqual(byModel["gemini-2.5-flash-lite"]?.usedPercent ?? 0, 15, accuracy: 0.0001)
+        XCTAssertNil(byModel["gemini-2.5-pro"])
+        XCTAssertNil(byModel["gemini-2.5-flash"])
+        XCTAssertNil(byModel["gemini-2.5-flash-lite"])
         XCTAssertEqual(byModel["gemini-3-flash-preview"]?.usedPercent ?? 0, 50, accuracy: 0.0001)
         XCTAssertEqual(byModel["gemini-3-pro-preview"]?.usedPercent ?? 0, 40, accuracy: 0.0001)
     }

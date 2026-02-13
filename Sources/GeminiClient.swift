@@ -183,9 +183,10 @@ struct GeminiClient: ProviderClient {
             ?? fallbackCandidates.sorted(by: { $0.remainingPercent < $1.remainingPercent }).first
         let secondary = flashCandidates.sorted(by: { $0.remainingPercent < $1.remainingPercent }).first
         
-        modelWindows.sort(by: { $0.modelId < $1.modelId })
+        let filteredModels = modelWindows.filter { $0.modelId.lowercased().hasPrefix("gemini-3") }
+        let sortedModels = filteredModels.sorted(by: { $0.modelId < $1.modelId })
         
-        return QuotaMapping(primary: primary, secondary: secondary, modelWindows: modelWindows)
+        return QuotaMapping(primary: primary, secondary: secondary, modelWindows: sortedModels)
     }
 
     private static func parseISO8601(_ raw: String?) -> Date? {
