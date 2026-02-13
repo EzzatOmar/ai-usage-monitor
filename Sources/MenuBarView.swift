@@ -102,6 +102,11 @@ struct MenuBarRootView: View {
             }
 
             HStack {
+                Link(destination: URL(string: "https://github.com/EzzatOmar/ai-usage-monitor")!) {
+                    Label("Star on GitHub", systemImage: "star")
+                        .font(.caption)
+                        .foregroundColor(.blue)
+                }
                 Spacer()
                 Button("Quit") {
                     NSApplication.shared.terminate(nil)
