@@ -60,7 +60,6 @@ struct ClaudeClient: ProviderClient {
     }
 
     private enum CredentialSource {
-        case pastedSetupToken
         case keychain
         case credentialFile
         case environment
@@ -118,10 +117,6 @@ struct ClaudeClient: ProviderClient {
                 rateLimitTier: keychainCreds.rateLimitTier,
                 source: .keychain
             ))
-        }
-
-        if let pastedToken = AuthStore.loadClaudeSetupToken() {
-            candidates.append(Credentials(accessToken: pastedToken, expiresAt: nil, rateLimitTier: "Setup token", source: .pastedSetupToken))
         }
 
         for path in self.claudeCredentialPaths() {

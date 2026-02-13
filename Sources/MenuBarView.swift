@@ -19,7 +19,6 @@ struct MenuBarRootView: View {
                 ProviderRow(
                     result: self.model.snapshot.results.first(where: { $0.provider == provider }),
                     provider: provider,
-                    onClaudeSetup: { self.model.openClaudeTokenEditor() },
                     onClaudeKeychainAccess: { self.model.enableClaudeKeychainAccess() },
                     claudeKeychainEnabled: self.model.claudeKeychainEnabled,
                     onZAISetup: { self.model.openZAIKeyEditor() },
@@ -28,23 +27,6 @@ struct MenuBarRootView: View {
             }
 
             Divider()
-
-            if self.model.showClaudeTokenEditor {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Claude setup token")
-                        .font(.caption.weight(.semibold))
-                    Text("Run `claude setup-token`, then paste the token here.")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                    SecureField("setup-token", text: self.$model.claudeSetupTokenInput)
-                        .textFieldStyle(.roundedBorder)
-                    HStack {
-                        Button("Cancel") { self.model.cancelClaudeTokenEditor() }
-                        Spacer()
-                        Button("Save") { self.model.saveClaudeToken() }
-                    }
-                }
-            }
 
             if self.model.showZAIKeyEditor {
                 VStack(alignment: .leading, spacing: 6) {
@@ -98,7 +80,6 @@ struct MenuBarRootView: View {
 private struct ProviderRow: View {
     let result: ProviderUsageResult?
     let provider: ProviderID
-    let onClaudeSetup: () -> Void
     let onClaudeKeychainAccess: () -> Void
     let claudeKeychainEnabled: Bool
     let onZAISetup: () -> Void
@@ -156,20 +137,11 @@ private struct ProviderRow: View {
                         .background(Color.red.opacity(0.12), in: Capsule())
                         .foregroundStyle(.red)
 
-                    if self.provider == .claude, self.result?.errorState != nil {
-                        HStack(spacing: 8) {
-                            Button("Paste token") {
-                                self.onClaudeSetup()
-                            }
-                            .font(.caption2)
-
-                            if !self.claudeKeychainEnabled {
-                                Button("Allow keychain") {
-                                    self.onClaudeKeychainAccess()
-                                }
-                                .font(.caption2)
-                            }
+                    if self.provider == .claude, self.result?.errorState != nil, !self.claudeKeychainEnabled {
+                        Button("Allow keychain") {
+                            self.onClaudeKeychainAccess()
                         }
+                        .font(.caption2)
                     }
 
                     if badge == "Auth needed", self.provider == .zai {

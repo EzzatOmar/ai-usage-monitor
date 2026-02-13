@@ -4,7 +4,6 @@ import Security
 enum AuthStore {
     private static let defaults = UserDefaults.standard
     private static let zaiKeyName = "aiUsageMonitor.zaiApiKey"
-    private static let claudeTokenName = "aiUsageMonitor.claudeSetupToken"
     private static let claudeKeychainEnabledName = "aiUsageMonitor.claudeUseKeychain"
     private static let cerebrasKeyName = "aiUsageMonitor.cerebrasApiKey"
 
@@ -22,22 +21,6 @@ enum AuthStore {
 
     static func clearZAIAPIKey() {
         self.defaults.removeObject(forKey: self.zaiKeyName)
-    }
-
-    static func loadClaudeSetupToken() -> String? {
-        let value = self.defaults.string(forKey: self.claudeTokenName)?.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let value, !value.isEmpty else { return nil }
-        return value
-    }
-
-    static func saveClaudeSetupToken(_ value: String) -> Bool {
-        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        self.defaults.set(trimmed, forKey: self.claudeTokenName)
-        return true
-    }
-
-    static func clearClaudeSetupToken() {
-        self.defaults.removeObject(forKey: self.claudeTokenName)
     }
 
     static func isClaudeKeychainEnabled() -> Bool {

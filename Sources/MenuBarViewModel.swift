@@ -9,8 +9,6 @@ final class MenuBarViewModel {
 
     var snapshot: UsageSnapshot = .empty
     var claudeKeychainEnabled: Bool = AuthStore.isClaudeKeychainEnabled()
-    var claudeSetupTokenInput: String = ""
-    var showClaudeTokenEditor: Bool = false
     var zaiAPIKeyInput: String = ""
     var showZAIKeyEditor: Bool = false
     var cerebrasAPIKeyInput: String = ""
@@ -41,30 +39,10 @@ final class MenuBarViewModel {
         }
     }
 
-    func openClaudeTokenEditor() {
-        self.claudeSetupTokenInput = AuthStore.loadClaudeSetupToken() ?? ""
-        self.showClaudeTokenEditor = true
-    }
-
-    func saveClaudeToken() {
-        let trimmed = self.claudeSetupTokenInput.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty {
-            AuthStore.clearClaudeSetupToken()
-        } else {
-            _ = AuthStore.saveClaudeSetupToken(trimmed)
-        }
-        self.showClaudeTokenEditor = false
-        self.refreshNow()
-    }
-
     func enableClaudeKeychainAccess() {
         AuthStore.setClaudeKeychainEnabled(true)
         self.claudeKeychainEnabled = true
         self.refreshNow()
-    }
-
-    func cancelClaudeTokenEditor() {
-        self.showClaudeTokenEditor = false
     }
 
     func openZAIKeyEditor() {
