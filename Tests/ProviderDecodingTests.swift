@@ -23,15 +23,15 @@ final class ProviderDecodingTests: XCTestCase {
         let data = Data(
             """
             {
-              "five_hour": { "utilization": 0.45, "resets_at": "2030-01-01T10:00:00Z" },
-              "seven_day": { "utilization": 0.75, "resets_at": "2030-01-07T10:00:00Z" }
+              "five_hour": { "utilization": 45.0, "resets_at": "2030-01-01T10:00:00Z" },
+              "seven_day": { "utilization": 75.0, "resets_at": "2030-01-07T10:00:00Z" }
             }
             """.utf8
         )
 
         let (fiveHour, sevenDay) = try ClaudeClient.decodeUsageResponse(data)
-        XCTAssertEqual(fiveHour, 0.45)
-        XCTAssertEqual(sevenDay, 0.75)
+        XCTAssertEqual(fiveHour, 45.0)
+        XCTAssertEqual(sevenDay, 75.0)
     }
 
     func test_geminiDecodeQuota() throws {

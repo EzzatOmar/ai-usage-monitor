@@ -103,7 +103,7 @@ struct ClaudeClient: ProviderClient {
 
         var asWindow: UsageWindow? {
             guard let utilization else { return nil }
-            return UsageWindow(usedPercent: utilization * 100, resetAt: ClaudeClient.parseISO8601(self.resetsAt), windowSeconds: nil)
+            return UsageWindow(usedPercent: utilization, resetAt: ClaudeClient.parseISO8601(self.resetsAt), windowSeconds: nil)
         }
     }
 
