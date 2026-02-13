@@ -1,13 +1,15 @@
 # AI Usage Monitor - TODO
 
-## High Priority
+## Completed
 
 ### Cerebras Usage Monitoring
-- [ ] Research how to get actual usage/quota data from Cerebras API
-- [ ] Current implementation shows "No quota data" - need to find correct endpoint
-- [ ] Check if there's a usage endpoint or if rate limits are header-based only
-- [ ] Write test for Cerebras usage fetch
-- [ ] Implement proper usage display
+- [x] Research how to get actual usage/quota data from Cerebras API
+- [x] Test if `/v1/models` endpoint returns `x-ratelimit-*` headers (NO - doesn't return them)
+- [x] Switch to minimal chat completion (`max_completion_tokens: 1`) to get headers
+- [x] Write test for Cerebras usage fetch (tests exist in ProviderDecodingTests.swift)
+- [x] Add 402 payment required error handling
+- [x] Use `zai-glm-4.7` model (works on all tiers)
+- [x] Add UI note about ~10K tokens/day probe technique
 
 ## Medium Priority
 

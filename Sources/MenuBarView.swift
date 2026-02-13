@@ -52,6 +52,9 @@ struct MenuBarRootView: View {
                     Text("Paste your API key from cloud.cerebras.ai.")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
+                    Text("Note: Uses ~10K tokens/day to fetch quota (no dedicated usage API).")
+                        .font(.caption2)
+                        .foregroundStyle(.orange)
                     SecureField("CEREBRAS_API_KEY", text: self.$model.cerebrasAPIKeyInput)
                         .textFieldStyle(.roundedBorder)
                     HStack {

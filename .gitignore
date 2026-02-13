@@ -4,3 +4,5 @@
 session-ses_*.md
 .research/
 sessions/
+.env
+dist/

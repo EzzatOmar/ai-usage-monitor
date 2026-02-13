@@ -69,11 +69,17 @@ struct CerebrasClient: ProviderClient {
         return nil
     }
 
-    /// Calls GET /v1/models (lightweight, no token cost) and reads rate-limit headers.
     static func fetchRateLimits(apiKey: String) async throws -> RateLimitResult {
-        var request = URLRequest(url: URL(string: "https://api.cerebras.ai/v1/models")!)
-        request.httpMethod = "GET"
+        var request = URLRequest(url: URL(string: "https://api.cerebras.ai/v1/chat/completions")!)
+        request.httpMethod = "POST"
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let body: [String: Any] = [
+            "model": "zai-glm-4.7",
+            "messages": [["role": "user", "content": "hi"]],
+            "max_completion_tokens": 1
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
         let (_, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse else {
@@ -82,6 +88,9 @@ struct CerebrasClient: ProviderClient {
         guard http.statusCode == 200 else {
             if http.statusCode == 401 || http.statusCode == 403 {
                 throw ProviderErrorState.tokenExpired
+            }
+            if http.statusCode == 402 {
+                throw ProviderErrorState.endpointError("Add payment method in Cerebras dashboard")
             }
             throw ProviderErrorState.endpointError("HTTP \(http.statusCode)")
         }
@@ -93,10 +102,10 @@ struct CerebrasClient: ProviderClient {
     static func parseRateLimitHeaders(_ http: HTTPURLResponse, now: Date) -> RateLimitResult {
         let headers = http.allHeaderFields
 
-        // Daily request limits (primary window)
-        let dailyLimit = Self.doubleHeader(headers, "x-ratelimit-limit-requests-day")
-        let dailyRemaining = Self.doubleHeader(headers, "x-ratelimit-remaining-requests-day")
-        let dailyResetSecs = Self.doubleHeader(headers, "x-ratelimit-reset-requests-day")
+        // Daily token limits (primary window) - no weekly limit available
+        let dailyLimit = Self.doubleHeader(headers, "x-ratelimit-limit-tokens-day")
+        let dailyRemaining = Self.doubleHeader(headers, "x-ratelimit-remaining-tokens-day")
+        let dailyResetSecs = Self.doubleHeader(headers, "x-ratelimit-reset-tokens-day")
 
         var primaryWindow: UsageWindow?
         if let limit = dailyLimit, let remaining = dailyRemaining, limit > 0 {
@@ -109,31 +118,14 @@ struct CerebrasClient: ProviderClient {
             )
         }
 
-        // Per-minute token limits (secondary window)
-        let minuteLimit = Self.doubleHeader(headers, "x-ratelimit-limit-tokens-minute")
-        let minuteRemaining = Self.doubleHeader(headers, "x-ratelimit-remaining-tokens-minute")
-        let minuteResetSecs = Self.doubleHeader(headers, "x-ratelimit-reset-tokens-minute")
-
-        var secondaryWindow: UsageWindow?
-        if let limit = minuteLimit, let remaining = minuteRemaining, limit > 0 {
-            let usedPercent = ((limit - remaining) / limit) * 100
-            let resetAt = minuteResetSecs.map { now.addingTimeInterval($0) }
-            secondaryWindow = UsageWindow(
-                usedPercent: max(0, min(100, usedPercent)),
-                resetAt: resetAt,
-                windowSeconds: 60
-            )
-        }
-
-        // Build account label from raw numbers
         var label: String?
         if let limit = dailyLimit, let remaining = dailyRemaining {
             let used = Int(limit - remaining)
             let total = Int(limit)
-            label = "Day: \(used)/\(total) reqs"
+            label = "Day: \(used)/\(total) tokens"
         }
 
-        return RateLimitResult(primary: primaryWindow, secondary: secondaryWindow, accountLabel: label)
+        return RateLimitResult(primary: primaryWindow, secondary: nil, accountLabel: label)
     }
 
     private static func doubleHeader(_ headers: [AnyHashable: Any], _ name: String) -> Double? {

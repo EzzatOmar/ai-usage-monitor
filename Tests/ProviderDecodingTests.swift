@@ -58,31 +58,26 @@ final class ProviderDecodingTests: XCTestCase {
             statusCode: 200,
             httpVersion: "HTTP/1.1",
             headerFields: [
-                "x-ratelimit-limit-requests-day": "1000",
-                "x-ratelimit-remaining-requests-day": "750",
-                "x-ratelimit-reset-requests-day": "3600",
-                "x-ratelimit-limit-tokens-minute": "100000",
-                "x-ratelimit-remaining-tokens-minute": "90000",
-                "x-ratelimit-reset-tokens-minute": "30",
+                "x-ratelimit-limit-tokens-day": "24000000",
+                "x-ratelimit-remaining-tokens-day": "18000000",
+                "x-ratelimit-reset-tokens-day": "3600",
             ]
         )!
 
         let now = Date()
         let result = CerebrasClient.parseRateLimitHeaders(http, now: now)
 
-        // Daily: 250 used / 1000 limit = 25% used
+        // Daily: 6M used / 24M limit = 25% used
         XCTAssertNotNil(result.primary)
         XCTAssertEqual(result.primary!.usedPercent, 25, accuracy: 0.001)
         XCTAssertEqual(result.primary!.windowSeconds, 86400)
         XCTAssertNotNil(result.primary!.resetAt)
         XCTAssertEqual(result.primary!.resetAt!.timeIntervalSince(now), 3600, accuracy: 1)
 
-        // Per-minute: 10000 used / 100000 limit = 10% used
-        XCTAssertNotNil(result.secondary)
-        XCTAssertEqual(result.secondary!.usedPercent, 10, accuracy: 0.001)
-        XCTAssertEqual(result.secondary!.windowSeconds, 60)
+        // No secondary window (no weekly limit)
+        XCTAssertNil(result.secondary)
 
-        XCTAssertEqual(result.accountLabel, "Day: 250/1000 reqs")
+        XCTAssertEqual(result.accountLabel, "Day: 6000000/24000000 tokens")
     }
 
     func test_cerebrasParseRateLimitHeaders_noHeaders() throws {
