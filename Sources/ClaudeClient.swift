@@ -10,12 +10,15 @@ struct ClaudeClient: ProviderClient {
                 throw ProviderErrorState.authNeeded
             }
 
-            var sawSetupToken401 = false
+            var keychainExpired = false
             var lastProviderError: ProviderErrorState?
 
             for candidate in candidates {
                 if let expiresAt = candidate.expiresAt, expiresAt <= Date() {
-                    lastProviderError = .endpointError("Token expired - run 'claude' to refresh")
+                    if candidate.source == .keychain {
+                        keychainExpired = true
+                    }
+                    lastProviderError = .endpointError("Token expired - run 'claude' in terminal to refresh")
                     continue
                 }
 
@@ -32,15 +35,12 @@ struct ClaudeClient: ProviderClient {
                     )
                 } catch let error as ProviderErrorState {
                     lastProviderError = error
-                    if case .tokenExpired = error, candidate.source == .pastedSetupToken {
-                        sawSetupToken401 = true
-                    }
                     continue
                 }
             }
 
-            if sawSetupToken401 {
-                throw ProviderErrorState.endpointError("Setup token was rejected by Claude usage API")
+            if keychainExpired {
+                throw ProviderErrorState.endpointError("Run 'claude' in terminal to refresh token")
             }
 
             throw lastProviderError ?? ProviderErrorState.authNeeded
