@@ -14,6 +14,14 @@ Tiny footprint: ~27 MB RAM, refreshes every 60 seconds.
 
 Download the latest `.dmg` from [Releases](../../releases/latest), open it, and drag **AI Usage Monitor** to Applications. No build or clone required.
 
+> **Note:** The app is not code-signed. macOS will block it on first launch.
+>
+> ![macOS security warning](docs/security.png)
+>
+> To allow it, go to **System Settings > Privacy & Security** and click **Open Anyway**.
+>
+> ![Open Anyway in Privacy & Security settings](docs/security-permission.png)
+
 ## What it does
 
 - Runs as a `MenuBarExtra` app with a compact SwiftUI panel.
