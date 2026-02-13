@@ -18,6 +18,14 @@ struct AIUsageMonitorApp: App {
 
     init() {
         NSApplication.shared.setActivationPolicy(.accessory)
+        Self.ejectDMGIfMounted()
+    }
+
+    private static func ejectDMGIfMounted() {
+        let dmgVolume = URL(fileURLWithPath: "/Volumes/AIUsageMonitor")
+        if FileManager.default.fileExists(atPath: dmgVolume.path) {
+            try? NSWorkspace.shared.unmountAndEjectDevice(at: dmgVolume)
+        }
     }
 
     var body: some Scene {
