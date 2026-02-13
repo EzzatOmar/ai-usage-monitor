@@ -65,6 +65,10 @@ enum AuthStore {
     }
 
     static func readClaudeTokenFromKeychainIfEnabled() -> String? {
+        readClaudeKeychainCredentials()?.accessToken
+    }
+
+    static func readClaudeKeychainCredentials() -> ClaudeKeychainCredentials? {
         guard self.isClaudeKeychainEnabled() else { return nil }
 
         let query: [String: Any] = [
@@ -83,15 +87,30 @@ enum AuthStore {
             return nil
         }
 
-        if let nested = object["claudeAiOauth"] as? [String: Any],
-           let token = nested["accessToken"] as? String,
-           !token.isEmpty
-        {
-            return token
+        if let nested = object["claudeAiOauth"] as? [String: Any] {
+            let accessToken = nested["accessToken"] as? String
+            let refreshToken = nested["refreshToken"] as? String
+            let expiresAt = (nested["expiresAt"] as? Double).map { Date(timeIntervalSince1970: $0 / 1000.0) }
+            let rateLimitTier = nested["rateLimitTier"] as? String
+            if let token = accessToken, !token.isEmpty {
+                return ClaudeKeychainCredentials(
+                    accessToken: token,
+                    refreshToken: refreshToken,
+                    expiresAt: expiresAt,
+                    rateLimitTier: rateLimitTier
+                )
+            }
         }
         if let token = object["accessToken"] as? String, !token.isEmpty {
-            return token
+            return ClaudeKeychainCredentials(accessToken: token, refreshToken: nil, expiresAt: nil, rateLimitTier: nil)
         }
         return nil
     }
+}
+
+struct ClaudeKeychainCredentials {
+    let accessToken: String
+    let refreshToken: String?
+    let expiresAt: Date?
+    let rateLimitTier: String?
 }

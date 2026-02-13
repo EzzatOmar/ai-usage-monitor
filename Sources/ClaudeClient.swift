@@ -15,7 +15,7 @@ struct ClaudeClient: ProviderClient {
 
             for candidate in candidates {
                 if let expiresAt = candidate.expiresAt, expiresAt <= Date() {
-                    lastProviderError = .tokenExpired
+                    lastProviderError = .endpointError("Token expired - run 'claude' to refresh")
                     continue
                 }
 
@@ -111,8 +111,13 @@ struct ClaudeClient: ProviderClient {
     private static func loadCredentialCandidates() throws -> [Credentials] {
         var candidates: [Credentials] = []
 
-        if let keychainToken = AuthStore.readClaudeTokenFromKeychainIfEnabled() {
-            candidates.append(Credentials(accessToken: keychainToken, expiresAt: nil, rateLimitTier: "Claude CLI", source: .keychain))
+        if let keychainCreds = AuthStore.readClaudeKeychainCredentials() {
+            candidates.append(Credentials(
+                accessToken: keychainCreds.accessToken,
+                expiresAt: keychainCreds.expiresAt,
+                rateLimitTier: keychainCreds.rateLimitTier,
+                source: .keychain
+            ))
         }
 
         if let pastedToken = AuthStore.loadClaudeSetupToken() {
