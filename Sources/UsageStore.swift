@@ -63,44 +63,52 @@ actor UsageStore {
         self.publish()
 
         let now = Date()
-        var fetched: [ProviderUsageResult] = []
+        // Start with existing results to preserve order/stale data while refreshing
+        var currentResults = self.snapshot.results
+
         await withTaskGroup(of: ProviderUsageResult.self) { group in
             for client in self.clients {
                 group.addTask {
                     await client.fetchUsage(now: now)
                 }
             }
+            
             for await result in group {
-                fetched.append(result)
-            }
-        }
-
-        var merged: [ProviderUsageResult] = []
-        for provider in ProviderID.allCases {
-            guard let candidate = fetched.first(where: { $0.provider == provider }) else { continue }
-            if candidate.errorState == nil {
-                self.lastGood[provider] = candidate
-                merged.append(candidate)
-                continue
-            }
-            if let cached = self.lastGood[provider] {
-                merged.append(
-                    ProviderUsageResult(
+                // Determine the final result for this provider (fresh or stale fallback)
+                let finalResult: ProviderUsageResult
+                
+                if result.errorState == nil {
+                    self.lastGood[result.provider] = result
+                    finalResult = result
+                } else if let cached = self.lastGood[result.provider] {
+                    finalResult = ProviderUsageResult(
                         provider: cached.provider,
                         primaryWindow: cached.primaryWindow,
                         secondaryWindow: cached.secondaryWindow,
+                        modelWindows: cached.modelWindows,
                         accountLabel: cached.accountLabel,
                         lastUpdated: cached.lastUpdated,
-                        errorState: candidate.errorState,
+                        errorState: result.errorState,
                         isStale: true
                     )
-                )
-            } else {
-                merged.append(candidate)
+                } else {
+                    finalResult = result
+                }
+                
+                // Update the local results list
+                if let index = currentResults.firstIndex(where: { $0.provider == finalResult.provider }) {
+                    currentResults[index] = finalResult
+                } else {
+                    currentResults.append(finalResult)
+                }
+                
+                // Publish intermediate state
+                self.snapshot = UsageSnapshot(results: currentResults, lastUpdated: now, isRefreshing: true)
+                self.publish()
             }
         }
 
-        self.snapshot = UsageSnapshot(results: merged, lastUpdated: now, isRefreshing: false)
+        self.snapshot = UsageSnapshot(results: currentResults, lastUpdated: now, isRefreshing: false)
         self.publish()
     }
 

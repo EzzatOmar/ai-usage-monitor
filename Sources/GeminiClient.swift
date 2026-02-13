@@ -182,6 +182,9 @@ struct GeminiClient: ProviderClient {
         let primary = proCandidates.sorted(by: { $0.remainingPercent < $1.remainingPercent }).first
             ?? fallbackCandidates.sorted(by: { $0.remainingPercent < $1.remainingPercent }).first
         let secondary = flashCandidates.sorted(by: { $0.remainingPercent < $1.remainingPercent }).first
+        
+        modelWindows.sort(by: { $0.modelId < $1.modelId })
+        
         return QuotaMapping(primary: primary, secondary: secondary, modelWindows: modelWindows)
     }
 
