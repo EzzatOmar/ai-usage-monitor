@@ -19,6 +19,7 @@ struct GeminiClient: ProviderClient {
                 provider: .gemini,
                 primaryWindow: quota.primary,
                 secondaryWindow: quota.secondary,
+                modelWindows: quota.modelWindows,
                 accountLabel: codeAssist.tierLabel,
                 lastUpdated: now,
                 errorState: nil,
@@ -58,6 +59,7 @@ struct GeminiClient: ProviderClient {
     private struct QuotaMapping {
         let primary: UsageWindow?
         let secondary: UsageWindow?
+        let modelWindows: [ModelUsageWindow]
     }
 
     private struct CodeAssistContext {
@@ -152,6 +154,7 @@ struct GeminiClient: ProviderClient {
         var proCandidates: [UsageWindow] = []
         var flashCandidates: [UsageWindow] = []
         var fallbackCandidates: [UsageWindow] = []
+        var modelWindows: [ModelUsageWindow] = []
 
         for bucket in buckets {
             guard let fraction = bucket.remainingFraction else { continue }
@@ -161,6 +164,11 @@ struct GeminiClient: ProviderClient {
                 resetAt: Self.parseISO8601(bucket.resetTime),
                 windowSeconds: 24 * 60 * 60
             )
+            
+            if let modelId = bucket.modelId {
+                modelWindows.append(ModelUsageWindow(modelId: modelId, window: window))
+            }
+            
             fallbackCandidates.append(window)
             let model = (bucket.modelId ?? "").lowercased()
             if model.contains("pro") {
@@ -174,7 +182,7 @@ struct GeminiClient: ProviderClient {
         let primary = proCandidates.sorted(by: { $0.remainingPercent < $1.remainingPercent }).first
             ?? fallbackCandidates.sorted(by: { $0.remainingPercent < $1.remainingPercent }).first
         let secondary = flashCandidates.sorted(by: { $0.remainingPercent < $1.remainingPercent }).first
-        return QuotaMapping(primary: primary, secondary: secondary)
+        return QuotaMapping(primary: primary, secondary: secondary, modelWindows: modelWindows)
     }
 
     private static func parseISO8601(_ raw: String?) -> Date? {
@@ -191,10 +199,10 @@ struct GeminiClient: ProviderClient {
 
 #if DEBUG
 extension GeminiClient {
-    static func decodeQuota(_ data: Data) throws -> (Double?, Double?) {
+    static func decodeQuota(_ data: Data) throws -> (Double?, Double?, [ModelUsageWindow]) {
         let decoded = try JSONDecoder().decode(QuotaResponse.self, from: data)
         let mapped = mapBuckets(decoded.buckets)
-        return (mapped.primary?.usedPercent, mapped.secondary?.usedPercent)
+        return (mapped.primary?.usedPercent, mapped.secondary?.usedPercent, mapped.modelWindows)
     }
 }
 #endif

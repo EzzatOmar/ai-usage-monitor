@@ -127,20 +127,28 @@ private struct ProviderRow: View {
                 Text(self.provider.rawValue)
                     .font(.subheadline.weight(.semibold))
                 if let result {
-                    if let primary = result.primaryWindow {
-                        Text("\(Int(primary.remainingPercent.rounded()))% left - \(RelativeTimeFormatter.resetText(primary.resetAt))")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                    if !result.modelWindows.isEmpty {
+                        ForEach(result.modelWindows, id: \.modelId) { item in
+                            Text("\(item.modelId)    \(Int(item.window.remainingPercent.rounded()))% left - \(RelativeTimeFormatter.resetText(item.window.resetAt))")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     } else {
-                        Text("No quota data")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
+                        if let primary = result.primaryWindow {
+                            Text("\(Int(primary.remainingPercent.rounded()))% left - \(RelativeTimeFormatter.resetText(primary.resetAt))")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            Text("No quota data")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
 
-                    if let secondary = result.secondaryWindow {
-                        Text("Weekly: \(Int(secondary.remainingPercent.rounded()))% left - \(RelativeTimeFormatter.resetText(secondary.resetAt))")
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
+                        if let secondary = result.secondaryWindow {
+                            Text("Weekly: \(Int(secondary.remainingPercent.rounded()))% left - \(RelativeTimeFormatter.resetText(secondary.resetAt))")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                        }
                     }
 
                     if let errorDetail = result.errorState?.detailText {

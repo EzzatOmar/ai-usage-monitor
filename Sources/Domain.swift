@@ -56,14 +56,40 @@ struct UsageWindow: Sendable, Equatable {
     }
 }
 
+struct ModelUsageWindow: Sendable, Equatable {
+    let modelId: String
+    let window: UsageWindow
+}
+
 struct ProviderUsageResult: Sendable, Equatable {
     let provider: ProviderID
     let primaryWindow: UsageWindow?
     let secondaryWindow: UsageWindow?
+    let modelWindows: [ModelUsageWindow]
     let accountLabel: String?
     let lastUpdated: Date
     let errorState: ProviderErrorState?
     let isStale: Bool
+
+    init(
+        provider: ProviderID,
+        primaryWindow: UsageWindow? = nil,
+        secondaryWindow: UsageWindow? = nil,
+        modelWindows: [ModelUsageWindow] = [],
+        accountLabel: String? = nil,
+        lastUpdated: Date,
+        errorState: ProviderErrorState? = nil,
+        isStale: Bool = false
+    ) {
+        self.provider = provider
+        self.primaryWindow = primaryWindow
+        self.secondaryWindow = secondaryWindow
+        self.modelWindows = modelWindows
+        self.accountLabel = accountLabel
+        self.lastUpdated = lastUpdated
+        self.errorState = errorState
+        self.isStale = isStale
+    }
 }
 
 struct UsageSnapshot: Sendable, Equatable {

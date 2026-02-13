@@ -40,15 +40,32 @@ final class ProviderDecodingTests: XCTestCase {
             {
               "buckets": [
                 { "modelId": "gemini-2.5-pro", "remainingFraction": 0.40, "resetTime": "2030-01-01T10:00:00Z" },
-                { "modelId": "gemini-2.5-flash", "remainingFraction": 0.70, "resetTime": "2030-01-01T10:00:00Z" }
+                { "modelId": "gemini-2.5-flash", "remainingFraction": 0.70, "resetTime": "2030-01-01T10:00:00Z" },
+                { "modelId": "gemini-2.5-flash-lite", "remainingFraction": 0.85, "resetTime": "2030-01-02T10:00:00Z" },
+                { "modelId": "gemini-3-flash-preview", "remainingFraction": 0.50, "resetTime": "2030-01-01T10:00:00Z" },
+                { "modelId": "gemini-3-pro-preview", "remainingFraction": 0.60, "resetTime": "2030-01-01T10:00:00Z" }
               ]
             }
             """.utf8
         )
 
-        let (primary, secondary) = try GeminiClient.decodeQuota(data)
+        let (primary, secondary, modelWindows) = try GeminiClient.decodeQuota(data)
+
+        // Primary = most-used pro model (gemini-2.5-pro at 60% used)
         XCTAssertEqual(primary ?? 0, 60, accuracy: 0.0001)
-        XCTAssertEqual(secondary ?? 0, 30, accuracy: 0.0001)
+        // Secondary = most-used flash model (gemini-3-flash-preview at 50% used)
+        XCTAssertEqual(secondary ?? 0, 50, accuracy: 0.0001)
+
+        // All 5 models should have individual windows
+        XCTAssertEqual(modelWindows.count, 5)
+
+        // Verify each model is present with correct usage
+        let byModel = Dictionary(uniqueKeysWithValues: modelWindows.map { ($0.modelId, $0.window) })
+        XCTAssertEqual(byModel["gemini-2.5-pro"]?.usedPercent ?? 0, 60, accuracy: 0.0001)
+        XCTAssertEqual(byModel["gemini-2.5-flash"]?.usedPercent ?? 0, 30, accuracy: 0.0001)
+        XCTAssertEqual(byModel["gemini-2.5-flash-lite"]?.usedPercent ?? 0, 15, accuracy: 0.0001)
+        XCTAssertEqual(byModel["gemini-3-flash-preview"]?.usedPercent ?? 0, 50, accuracy: 0.0001)
+        XCTAssertEqual(byModel["gemini-3-pro-preview"]?.usedPercent ?? 0, 40, accuracy: 0.0001)
     }
 
     func test_cerebrasParseRateLimitHeaders() throws {
