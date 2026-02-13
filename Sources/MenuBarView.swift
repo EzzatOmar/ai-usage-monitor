@@ -71,6 +71,13 @@ struct MenuBarRootView: View {
                     self.model.refreshNow()
                 }
             }
+
+            HStack {
+                Spacer()
+                Button("Quit") {
+                    NSApplication.shared.terminate(nil)
+                }
+            }
         }
         .padding(12)
         .frame(width: 340)
