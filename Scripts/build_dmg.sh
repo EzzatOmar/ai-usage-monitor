@@ -70,6 +70,8 @@ mkdir -p "${APP_BUNDLE}/Contents/Resources"
 cp "${BINARY_PATH}" "${APP_BUNDLE}/Contents/MacOS/${APP_NAME}"
 chmod +x "${APP_BUNDLE}/Contents/MacOS/${APP_NAME}"
 cp "${ICNS_PATH}" "${APP_BUNDLE}/Contents/Resources/AppIcon.icns"
+cp "${ROOT}/Scripts/update_helper.sh" "${APP_BUNDLE}/Contents/Resources/update_helper.sh"
+chmod +x "${APP_BUNDLE}/Contents/Resources/update_helper.sh"
 
 GIT_COMMIT="$(git -C "${ROOT}" rev-parse --short HEAD 2>/dev/null || echo "unknown")"
 

@@ -75,6 +75,32 @@ struct MenuBarRootView: View {
                 }
             }
 
+            if let version = self.model.updateAvailableVersion {
+                Button {
+                    self.model.triggerUpdate()
+                } label: {
+                    Label("Update to \(version)", systemImage: "arrow.down.circle.fill")
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+            }
+
+            if self.model.updateStatus == .downloading {
+                HStack(spacing: 6) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text("Downloading update…")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            if case .error(let message) = self.model.updateStatus {
+                Text(message)
+                    .font(.caption2)
+                    .foregroundStyle(.red)
+            }
+
             HStack {
                 Spacer()
                 Button("Quit") {

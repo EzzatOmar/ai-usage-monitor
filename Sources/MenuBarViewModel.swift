@@ -6,8 +6,10 @@ import Observation
 final class MenuBarViewModel {
     private let store: UsageStore
     private var listenTask: Task<Void, Never>?
+    private var updateListenTask: Task<Void, Never>?
 
     var snapshot: UsageSnapshot = .empty
+    var updateStatus: UpdateStatus = .unknown
     var claudeKeychainEnabled: Bool = AuthStore.isClaudeKeychainEnabled()
     var zaiAPIKeyInput: String = ""
     var showZAIKeyEditor: Bool = false
@@ -27,10 +29,7 @@ final class MenuBarViewModel {
     }
 
     var menuBarSystemImage: String {
-        if self.snapshot.results.contains(where: { $0.errorState != nil }) {
-            return "exclamationmark.triangle"
-        }
-        return "chart.pie"
+        "chart.pie"
     }
 
     func refreshNow() {
@@ -85,12 +84,32 @@ final class MenuBarViewModel {
         self.showCerebrasKeyEditor = false
     }
 
+    var updateAvailableVersion: String? {
+        if case .available(let version, _) = self.updateStatus {
+            return version
+        }
+        return nil
+    }
+
+    func triggerUpdate() {
+        Task {
+            await UpdateChecker.shared.triggerDownloadAndInstall()
+        }
+    }
+
     private func start() {
         self.listenTask = Task {
             await self.store.start()
             let stream = await self.store.updates()
             for await update in stream {
                 self.snapshot = update
+            }
+        }
+        self.updateListenTask = Task {
+            await UpdateChecker.shared.start()
+            let stream = await UpdateChecker.shared.statusUpdates()
+            for await status in stream {
+                self.updateStatus = status
             }
         }
     }
