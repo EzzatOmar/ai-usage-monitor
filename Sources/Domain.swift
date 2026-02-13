@@ -5,6 +5,7 @@ enum ProviderID: String, CaseIterable, Sendable {
     case codex = "Codex"
     case gemini = "Gemini"
     case zai = "Z.AI"
+    case cerebras = "Cerebras"
 }
 
 enum ProviderErrorState: Error, Sendable, Equatable {

@@ -10,6 +10,7 @@ struct AIUsageMonitorApp: App {
                 CodexClient(),
                 GeminiClient(),
                 ZAIClient(),
+                CerebrasClient(),
             ],
             pollIntervalSeconds: 60
         )

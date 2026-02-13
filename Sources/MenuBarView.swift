@@ -22,7 +22,8 @@ struct MenuBarRootView: View {
                     onClaudeSetup: { self.model.openClaudeTokenEditor() },
                     onClaudeKeychainAccess: { self.model.enableClaudeKeychainAccess() },
                     claudeKeychainEnabled: self.model.claudeKeychainEnabled,
-                    onZAISetup: { self.model.openZAIKeyEditor() }
+                    onZAISetup: { self.model.openZAIKeyEditor() },
+                    onCerebrasSetup: { self.model.openCerebrasKeyEditor() }
                 )
             }
 
@@ -62,6 +63,23 @@ struct MenuBarRootView: View {
                 }
             }
 
+            if self.model.showCerebrasKeyEditor {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Set Cerebras API key")
+                        .font(.caption.weight(.semibold))
+                    Text("Paste your API key from cloud.cerebras.ai.")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    SecureField("CEREBRAS_API_KEY", text: self.$model.cerebrasAPIKeyInput)
+                        .textFieldStyle(.roundedBorder)
+                    HStack {
+                        Button("Cancel") { self.model.cancelCerebrasKeyEditor() }
+                        Spacer()
+                        Button("Save") { self.model.saveCerebrasKey() }
+                    }
+                }
+            }
+
             HStack {
                 Text("Updated \(RelativeTimeFormatter.lastUpdatedText(self.model.snapshot.lastUpdated))")
                     .font(.caption)
@@ -84,6 +102,7 @@ private struct ProviderRow: View {
     let onClaudeKeychainAccess: () -> Void
     let claudeKeychainEnabled: Bool
     let onZAISetup: () -> Void
+    let onCerebrasSetup: () -> Void
 
     var body: some View {
         HStack(alignment: .firstTextBaseline) {
@@ -150,6 +169,13 @@ private struct ProviderRow: View {
                     if badge == "Auth needed", self.provider == .zai {
                         Button("Set key") {
                             self.onZAISetup()
+                        }
+                        .font(.caption2)
+                    }
+
+                    if badge == "Auth needed", self.provider == .cerebras {
+                        Button("Set key") {
+                            self.onCerebrasSetup()
                         }
                         .font(.caption2)
                     }

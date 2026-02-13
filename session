@@ -1,0 +1,869 @@
+# AI Usage Monitor project plan discussion
+
+**Session ID:** ses_3ac348cd1ffewsNQjRL3uwVWWM
+**Created:** 2/12/2026, 10:39:28 PM
+**Updated:** 2/12/2026, 11:53:32 PM
+
+---
+
+## Assistant
+
+**Tool: bash**
+
+---
+
+## Assistant
+
+**Tool: apply_patch**
+
+---
+
+## Assistant
+
+**Tool: bash**
+
+---
+
+## Assistant
+
+**Tool: todowrite**
+
+---
+
+## Assistant
+
+**Tool: bash**
+
+---
+
+## Assistant
+
+Implemented a full MVP of `PROJECT_PLAN.md` as a native SwiftPM macOS menu bar app, and I used a subagent first to generate the implementation blueprint before building it.
+
+- Added app scaffold + package setup in `Package.swift` and `Sources/AIUsageMonitorApp.swift`.
+- Built shared domain models (`ProviderUsageResult`, windows, error states) in `Sources/Domain.swift`.
+- Implemented a polling `UsageStore` actor with 60s refresh, concurrent provider fetches, manual refresh, and last-good stale fallback in `Sources/UsageStore.swift`.
+- Implemented API-first provider clients:
+  - `Sources/CodexClient.swift` (`~/.codex/auth.json`, optional refresh, usage endpoint mapping)
+  - `Sources/ClaudeClient.swift` (`~/.claude/.credentials.json`, OAuth usage endpoint, beta header)
+  - `Sources/GeminiClient.swift` (`~/.gemini/settings.json` + `oauth_creds.json`, `loadCodeAssist` + `retrieveUserQuota`)
+- Added compact SwiftUI menu UI + refresh action in `Sources/MenuBarView.swift` and state/view-model in `Sources/MenuBarViewModel.swift`.
+- Added local infra helpers for path/json/redaction in `Sources/Infrastructure.swift`.
+- Added tests for decoding + store behavior in `Tests/ProviderDecodingTests.swift` and `Tests/UsageStoreTests.swift`.
+- Added packaging docs + DMG script in `README.md` and `Scripts/build_dmg.sh`.
+
+Validation run:
+- `swift test` passed (4 tests, 0 failures).
+
+If you want, next natural steps are:
+1. Add provider-specific token refresh for Claude/Gemini edge cases (currently token-expired is surfaced cleanly, but refresh is intentionally minimal there).
+2. Add app icon + release-grade `.app` bundling/notarization flow (beyond binary-in-DMG).
+3. Add integration tests with fixture snapshots for real-world API payload variants.
+
+---
+
+## User
+
+how to build the app?
+
+---
+
+## Assistant
+
+From the repo root (`/Users/omarezzat/Workspace/ai-usage-monitor`):
+
+- Build:
+  - `swift build`
+- Run as menu bar app:
+  - `swift run AIUsageMonitor`
+- Run tests:
+  - `swift test`
+- Create a DMG:
+  - `./Scripts/build_dmg.sh`
+  - output: `dist/AIUsageMonitor.dmg`
+
+Notes:
+- This is currently a SwiftPM executable (not a fully bundled `.app` yet).
+- The app expects local auth files for providers (`~/.codex/auth.json`, `~/.claude/.credentials.json`, `~/.gemini/oauth_creds.json`). If missing, it shows `Auth needed`.
+
+---
+
+## User
+
+claude setup does not work. but there is a cli token call "setup-token"
+
+also read https://docs.openclaw.ai/providers/anthropic
+https://docs.openclaw.ai/providers/openai
+https://docs.openclaw.ai/providers/zai
+
+--> inlcude zai support
+
+---
+
+## Assistant
+
+**Tool: task**
+
+---
+
+## Assistant
+
+**Tool: webfetch**
+
+**Tool: webfetch**
+
+**Tool: webfetch**
+
+---
+
+## Assistant
+
+**Tool: webfetch**
+
+---
+
+## Assistant
+
+**Tool: todowrite**
+
+---
+
+## Assistant
+
+**Tool: read**
+
+**Tool: read**
+
+**Tool: read**
+
+**Tool: read**
+
+---
+
+## Assistant
+
+**Tool: apply_patch**
+
+---
+
+## Assistant
+
+**Tool: apply_patch**
+
+---
+
+## Assistant
+
+**Tool: apply_patch**
+
+---
+
+## Assistant
+
+**Tool: apply_patch**
+
+---
+
+## Assistant
+
+**Tool: apply_patch**
+
+---
+
+## Assistant
+
+**Tool: read**
+
+---
+
+## Assistant
+
+**Tool: apply_patch**
+
+---
+
+## Assistant
+
+**Tool: read**
+
+---
+
+## Assistant
+
+**Tool: apply_patch**
+
+---
+
+## Assistant
+
+**Tool: todowrite**
+
+---
+
+## Assistant
+
+**Tool: bash**
+
+---
+
+## Assistant
+
+**Tool: todowrite**
+
+---
+
+## Assistant
+
+Great callout — I implemented both changes.
+
+- Claude auth now falls back to the CLI setup-token flow if `~/.claude/.credentials.json` is missing/invalid.
+- Z.AI is now included as a provider in the app.
+
+What changed:
+
+- Added Claude setup-token fallback in `Sources/ClaudeClient.swift`
+  - Keeps existing OAuth-file flow first.
+  - If that fails, runs `claude setup-token` via a bounded command runner and parses token output.
+  - Uses that token for the same usage API call (`/api/oauth/usage`).
+- Added a process utility with timeout support in `Sources/Infrastructure.swift`
+  - New `CommandRunner.run(...)` for safe CLI invocation.
+- Added Z.AI provider support in `Sources/ZAIClient.swift`
+  - Reads `ZAI_API_KEY` from environment.
+  - Shows `Auth needed` if missing.
+  - Marks provider connected when key exists.
+- Added Z.AI to provider list and polling in `Sources/Domain.swift` and `Sources/AIUsageMonitorApp.swift`.
+- Added test coverage for setup-token parsing in `Tests/ProviderDecodingTests.swift`.
+- Updated docs in `README.md` to document setup-token fallback + Z.AI behavior.
+
+Validation:
+
+- Ran `swift test` successfully (all tests passing).
+
+Important note on Z.AI:
+- The OpenClaw provider docs confirm auth (`ZAI_API_KEY`) and endpoints, but don’t document a stable usage/quota endpoint yet, so Z.AI currently reports auth status rather than quota windows.
+
+If you want, I can do a next pass to add an optional Z.AI quota probe behind a feature flag once you share the exact endpoint contract you want to rely on.
+
+---
+
+## User
+
+good. I can see [Image 1] 
+
+investigate. you must have a login flow or so for claude and z.ai
+
+you can investigate how https://github.com/FlameZerg/CC-Cli-Quota.git is doing that. is an vscode extension to do the same thing.
+
+before --> commit current state
+
+than ->
+clone -> research -> document -> remove repo -> update our swift app
+
+
+
+---
+
+## Assistant
+
+**Tool: bash**
+
+**Tool: bash**
+
+**Tool: bash**
+
+---
+
+## Assistant
+
+**Tool: apply_patch**
+
+---
+
+## Assistant
+
+**Tool: bash**
+
+---
+
+## Assistant
+
+**Tool: bash**
+
+---
+
+## Assistant
+
+**Tool: bash**
+
+---
+
+## Assistant
+
+**Tool: task**
+
+---
+
+## Assistant
+
+**Tool: read**
+
+**Tool: read**
+
+**Tool: read**
+
+---
+
+## Assistant
+
+**Tool: apply_patch**
+
+---
+
+## Assistant
+
+**Tool: apply_patch**
+
+---
+
+## Assistant
+
+**Tool: apply_patch**
+
+---
+
+## Assistant
+
+**Tool: apply_patch**
+
+---
+
+## Assistant
+
+**Tool: read**
+
+---
+
+## Assistant
+
+**Tool: apply_patch**
+
+---
+
+## Assistant
+
+**Tool: apply_patch**
+
+---
+
+## Assistant
+
+**Tool: read**
+
+---
+
+## Assistant
+
+**Tool: apply_patch**
+
+---
+
+## Assistant
+
+**Tool: apply_patch**
+
+---
+
+## Assistant
+
+**Tool: apply_patch**
+
+---
+
+## Assistant
+
+**Tool: apply_patch**
+
+---
+
+## Assistant
+
+**Tool: apply_patch**
+
+---
+
+## Assistant
+
+**Tool: bash**
+
+---
+
+## Assistant
+
+**Tool: bash**
+
+---
+
+## Assistant
+
+**Tool: bash**
+
+---
+
+## Assistant
+
+**Tool: apply_patch**
+
+---
+
+## Assistant
+
+**Tool: bash**
+
+---
+
+## Assistant
+
+**Tool: bash**
+
+---
+
+## Assistant
+
+**Tool: bash**
+
+---
+
+## Assistant
+
+Done — I followed your sequence exactly.
+
+- Committed the previous state first: `41113f0` (`Implement API-first menu bar usage monitor MVP`).
+- Cloned `CC-Cli-Quota` into `.research/CC-Cli-Quota`, researched auth/usage behavior, documented findings, then removed the cloned repo.
+- Used a subagent for the deeper repo investigation (per your instruction).
+
+What I changed now for auth flow and Z.AI:
+
+- Claude auth is now much more robust in `Sources/ClaudeClient.swift`:
+  - Checks macOS Keychain service `Claude Code-credentials`
+  - Checks credential files:
+    - `~/.claude/.credentials.json`
+    - `~/.claude/credentials.json`
+    - `~/.config/claude/credentials.json`
+  - Checks `CLAUDE_ACCESS_TOKEN`
+  - Falls back to `claude setup-token`
+- Added Claude “Login” action in UI:
+  - `Sources/MenuBarView.swift` + `Sources/MenuBarViewModel.swift`
+  - Opens Terminal and runs `claude` via `AuthStore.openTerminalAndRunClaudeLogin()`
+- Added real Z.AI setup + usage flow:
+  - `Sources/AuthStore.swift`: secure Keychain storage for Z.AI API key
+  - `Sources/MenuBarView.swift`: inline “Set key” UI when Z.AI auth is missing
+  - `Sources/ZAIClient.swift`:
+    - Loads key from app keychain first, then env aliases (`ZAI_API_KEY`, `ZAI_KEY`, `ZHIPU_API_KEY`, `ZHIPUAI_API_KEY`)
+    - Calls quota endpoint: `https://api.z.ai/api/monitor/usage/quota/limit`
+    - Calls weekly usage endpoint: `https://api.z.ai/api/monitor/usage/model-usage?...`
+    - Maps quota to primary/secondary windows
+- Documented research in `docs/CC_CLI_QUOTA_RESEARCH.md`.
+- Updated `README.md` to reflect the new auth/login behavior.
+
+Validation:
+
+- Ran `swift test` successfully (all tests passing).
+
+Current uncommitted files:
+
+- `README.md`
+- `Sources/ClaudeClient.swift`
+- `Sources/MenuBarView.swift`
+- `Sources/MenuBarViewModel.swift`
+- `Sources/ZAIClient.swift`
+- `Sources/AuthStore.swift`
+- `docs/CC_CLI_QUOTA_RESEARCH.md`
+
+If you want, I can commit this second batch now with a focused message like:
+`Add Claude credential discovery and Z.AI key/login flow`.
+
+---
+
+## User
+
+We don't want key chain access. If you really really need to get a new Claude token you can also do it in the little window where you just say user should call Claude setup token and then paste in whatever token they have. Same for ZAI. They can just have like little input box where user have to paste in their key. 
+
+---
+
+## Assistant
+
+**Tool: read**
+
+**Tool: read**
+
+**Tool: read**
+
+**Tool: read**
+
+**Tool: read**
+
+**Tool: read**
+
+**Tool: read**
+
+---
+
+## Assistant
+
+**Tool: read**
+
+---
+
+## Assistant
+
+**Tool: apply_patch**
+
+---
+
+## Assistant
+
+**Tool: apply_patch**
+
+---
+
+## Assistant
+
+**Tool: apply_patch**
+
+---
+
+## Assistant
+
+**Tool: apply_patch**
+
+---
+
+## Assistant
+
+**Tool: apply_patch**
+
+---
+
+## Assistant
+
+**Tool: apply_patch**
+
+---
+
+## Assistant
+
+**Tool: apply_patch**
+
+---
+
+## Assistant
+
+**Tool: read**
+
+---
+
+## Assistant
+
+**Tool: apply_patch**
+
+---
+
+## Assistant
+
+**Tool: bash**
+
+---
+
+## Assistant
+
+**Tool: bash**
+
+---
+
+## Assistant
+
+Perfect — updated exactly as requested: no keychain access, and both Claude + Z.AI now use paste-based input in the app UI.
+
+- Removed keychain/token scraping behavior entirely from our flow.
+- Added inline auth editors in the menu window:
+  - Claude: `Paste token` button + guidance to run `claude setup-token`, then paste.
+  - Z.AI: `Set key` button + secure input to paste API key.
+- Persisted pasted values locally via app settings (UserDefaults), not keychain.
+- Claude credential order is now:
+  1) pasted setup-token, 2) local Claude credential files, 3) `CLAUDE_ACCESS_TOKEN`.
+- Z.AI key order is now:
+  1) pasted key, 2) env fallbacks (`ZAI_API_KEY`, `ZAI_KEY`, `ZHIPU_API_KEY`, `ZHIPUAI_API_KEY`).
+- Z.AI quota + weekly usage API mapping remains active.
+
+Updated files:
+- `Sources/AuthStore.swift`
+- `Sources/ClaudeClient.swift`
+- `Sources/ZAIClient.swift`
+- `Sources/MenuBarViewModel.swift`
+- `Sources/MenuBarView.swift`
+- `Sources/Infrastructure.swift`
+- `README.md`
+- `docs/CC_CLI_QUOTA_RESEARCH.md`
+- `Tests/ProviderDecodingTests.swift`
+
+Validation:
+- `swift test` passes (all tests green).
+
+If you want, I can commit this as the next commit now with a message like:
+`Switch Claude/ZAI to paste-based auth flows (no keychain)`.
+
+---
+
+## User
+
+Okay, zai works, but Claude does not work. I pasted a token in and it says token expired. But it's just a fresh token
+
+---
+
+## Assistant
+
+**Tool: webfetch**
+
+**Tool: webfetch**
+
+**Tool: webfetch**
+
+---
+
+## Assistant
+
+**Tool: webfetch**
+
+---
+
+## Assistant
+
+**Tool: webfetch**
+
+---
+
+## Assistant
+
+**Tool: bash**
+
+---
+
+## Assistant
+
+**Tool: bash**
+
+---
+
+## Assistant
+
+**Tool: read**
+
+---
+
+## Assistant
+
+**Tool: bash**
+
+---
+
+## Assistant
+
+**Tool: bash**
+
+---
+
+## Assistant
+
+**Tool: bash**
+
+---
+
+## Assistant
+
+**Tool: apply_patch**
+
+---
+
+## Assistant
+
+**Tool: bash**
+
+---
+
+## Assistant
+
+You’re right to flag that — I investigated and found the root cause:
+
+- A `setup-token` is **not** the same token type as the one accepted by Claude’s usage endpoint (`/api/oauth/usage`).
+- Our app was treating pasted setup-token as a direct bearer token, which can return `401` and look like “token expired” even when it’s fresh.
+
+I’ve now adjusted the Claude flow in `Sources/ClaudeClient.swift`:
+
+- It tries credentials in order:
+  1. pasted token (from the app box),
+  2. local Claude credential files,
+  3. `CLAUDE_ACCESS_TOKEN`.
+- If the pasted setup-token is rejected, it automatically falls through to other local token sources instead of hard-failing immediately.
+
+So practically:
+
+- If you only have a setup-token, quota API may still reject it.
+- If you run `claude` once and it writes local OAuth credentials, the app can use those (without keychain).
+- If you want paste-only, you’d need to paste a token that is actually valid for Anthropic OAuth usage endpoint, not just setup-token.
+
+I also ran `swift test` after the fix; tests pass.
+
+If you want, next I can make the Claude row show a clearer badge/message like:
+`Setup-token rejected; run claude and re-paste token` instead of generic token-expired/API-error.
+
+---
+
+## User
+
+so how does https://github.com/FlameZerg/CC-Cli-Quota work with claude code than?
+
+---
+
+## Assistant
+
+It works because it usually reads the **Claude OAuth access token**, not the setup-token itself.
+
+In `CC-Cli-Quota`:
+
+- It fetches Claude credentials from:
+  - macOS keychain service `Claude Code-credentials`,
+  - then Claude credential files,
+  - then `CLAUDE_ACCESS_TOKEN`.
+- Then it calls `GET https://api.anthropic.com/api/oauth/usage` with `Authorization: Bearer <that token>`.
+
+So the important part is:
+- `setup-token` is mainly an onboarding/auth bootstrap token.
+- The usage endpoint expects a valid OAuth bearer token.
+- In many setups, running `claude` has already produced/stored that OAuth token, so CC-Cli-Quota “just works” by reading it.
+
+That’s why your paste-only flow can fail if what’s pasted is only a setup-token string and not a usage-API-valid bearer token.
+
+---
+
+## User
+
+okay. Implement the following. By default, Claude will not be fetching something as long as they don't have access to the keychain, but they have a button, something like give keychain access also. And then the user can decide if they want that or not. And then you just, in case you have the keychain access, then proceed. 
+
+---
+
+## Assistant
+
+**Tool: apply_patch**
+
+---
+
+## Assistant
+
+**Tool: apply_patch**
+
+---
+
+## Assistant
+
+**Tool: apply_patch**
+
+---
+
+## Assistant
+
+**Tool: apply_patch**
+
+---
+
+## Assistant
+
+**Tool: apply_patch**
+
+---
+
+## Assistant
+
+**Tool: bash**
+
+---
+
+## Assistant
+
+Implemented.
+
+Claude now behaves exactly as you requested:
+
+- By default, **no keychain access is used**.
+- When Claude is `Auth needed`, UI now shows:
+  - `Paste token`
+  - `Allow keychain` (only shown until enabled)
+- If user clicks `Allow keychain`, we persist that preference and then Claude starts reading token from keychain and retries fetch.
+
+What changed:
+
+- Added explicit Claude keychain opt-in state in `Sources/AuthStore.swift`.
+- Claude client now reads keychain token **only if opt-in is enabled** in `Sources/ClaudeClient.swift`.
+- Added view-model action/state for enabling keychain in `Sources/MenuBarViewModel.swift`.
+- Added `Allow keychain` button in Claude row UI in `Sources/MenuBarView.swift`.
+- Updated docs note in `README.md`.
+
+Verification:
+
+- Ran `swift test` successfully (all passing).
+
+If you want, I can also add a small `Disable keychain` button in the Claude row so users can revoke that preference directly from the menu.
+
+---
+
+## User
+
+[Image 1] only says api error
+
+---
+
+## Assistant
+
+**Tool: apply_patch**
+
+---
+
+## Assistant
+
+**Tool: apply_patch**
+
+---
+
+## Assistant
+
+**Tool: apply_patch**
+
+---
+
+## Assistant
+
+**Tool: bash**
+
+---
+
+## Assistant
+
+Good catch — I just fixed that so it won’t be a vague `API error` anymore.
+
+What I changed:
+
+- Claude now surfaces endpoint details instead of only generic badge text.
+  - `Sources/ClaudeClient.swift`: non-200 responses now include status + body snippet (when available), e.g. `HTTP 400: ...`.
+- Error badge is smarter for auth-like API failures.
+  - `Sources/Domain.swift`: if endpoint message looks like auth rejection (`401/403/invalid/rejected`), badge shows `Auth needed` instead of `API error`.
+- Claude row now shows a short detail line under `No quota data`.
+  - `Sources/MenuBarView.swift`: displays `errorState.detailText` (2 lines max), so you can see the actual failure reason.
+- Claude action buttons are available for any Claude error, not just `Auth needed`.
+  - `Sources/MenuBarView.swift`: `Paste token` + `Allow keychain` appear whenever Claude has an error.
+
+Validation:
+- `swift test` passes.
+
+Please hit `Refresh now` and share the exact new Claude detail text shown under `No quota data` — that should tell us immediately whether it’s token type mismatch, header/version issue, or another endpoint-specific rejection.
+
+---
+

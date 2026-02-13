@@ -13,6 +13,8 @@ final class MenuBarViewModel {
     var showClaudeTokenEditor: Bool = false
     var zaiAPIKeyInput: String = ""
     var showZAIKeyEditor: Bool = false
+    var cerebrasAPIKeyInput: String = ""
+    var showCerebrasKeyEditor: Bool = false
 
     init(store: UsageStore) {
         self.store = store
@@ -83,6 +85,26 @@ final class MenuBarViewModel {
 
     func cancelZAIKeyEditor() {
         self.showZAIKeyEditor = false
+    }
+
+    func openCerebrasKeyEditor() {
+        self.cerebrasAPIKeyInput = AuthStore.loadCerebrasAPIKey() ?? ""
+        self.showCerebrasKeyEditor = true
+    }
+
+    func saveCerebrasKey() {
+        let trimmed = self.cerebrasAPIKeyInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            AuthStore.clearCerebrasAPIKey()
+        } else {
+            _ = AuthStore.saveCerebrasAPIKey(trimmed)
+        }
+        self.showCerebrasKeyEditor = false
+        self.refreshNow()
+    }
+
+    func cancelCerebrasKeyEditor() {
+        self.showCerebrasKeyEditor = false
     }
 
     private func start() {
