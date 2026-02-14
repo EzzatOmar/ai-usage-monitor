@@ -12,6 +12,7 @@ struct AIUsageMonitorApp: App {
                 GeminiClient(),
                 ZAIClient(),
                 CerebrasClient(),
+                MinimaxClient(),
             ],
             pollIntervalSeconds: 60
         )

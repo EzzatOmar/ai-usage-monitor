@@ -111,4 +111,33 @@ final class ProviderDecodingTests: XCTestCase {
         XCTAssertNil(result.secondary)
         XCTAssertNil(result.accountLabel)
     }
+
+    func test_minimaxDecodeUsage() throws {
+        let data = Data(
+            """
+            {
+                "model_remains": [
+                    {
+                        "start_time": 1771027200000,
+                        "end_time": 1771045200000,
+                        "remains_time": 17452643,
+                        "current_interval_total_count": 4500,
+                        "current_interval_usage_count": 255,
+                        "model_name": "MiniMax-M2"
+                    }
+                ],
+                "base_resp": {
+                    "status_code": 0,
+                    "status_msg": "success"
+                }
+            }
+            """.utf8
+        )
+
+        let (primary, accountLabel) = try MinimaxClient.decodeUsageResponse(data)
+
+        XCTAssertNotNil(primary)
+        XCTAssertEqual(primary!.usedPercent, 94.33, accuracy: 0.1)
+        XCTAssertEqual(accountLabel, "MiniMax-M2: 4245/4500 prompts")
+    }
 }

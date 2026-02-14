@@ -22,7 +22,8 @@ struct MenuBarRootView: View {
                     onClaudeKeychainAccess: { self.model.enableClaudeKeychainAccess() },
                     claudeKeychainEnabled: self.model.claudeKeychainEnabled,
                     onZAISetup: { self.model.openZAIKeyEditor() },
-                    onCerebrasSetup: { self.model.openCerebrasKeyEditor() }
+                    onCerebrasSetup: { self.model.openCerebrasKeyEditor() },
+                    onMinimaxSetup: { self.model.openMinimaxKeyEditor() }
                 )
             }
 
@@ -61,6 +62,23 @@ struct MenuBarRootView: View {
                         Button("Cancel") { self.model.cancelCerebrasKeyEditor() }
                         Spacer()
                         Button("Save") { self.model.saveCerebrasKey() }
+                    }
+                }
+            }
+
+            if self.model.showMinimaxKeyEditor {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Set Minimax API key")
+                        .font(.caption.weight(.semibold))
+                    Text("Paste your Coding Plan key from platform.minimax.io.")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    SecureField("MINIMAX_KEY", text: self.$model.minimaxAPIKeyInput)
+                        .textFieldStyle(.roundedBorder)
+                    HStack {
+                        Button("Cancel") { self.model.cancelMinimaxKeyEditor() }
+                        Spacer()
+                        Button("Save") { self.model.saveMinimaxKey() }
                     }
                 }
             }
@@ -125,6 +143,7 @@ private struct ProviderRow: View {
     let claudeKeychainEnabled: Bool
     let onZAISetup: () -> Void
     let onCerebrasSetup: () -> Void
+    let onMinimaxSetup: () -> Void
 
     var body: some View {
         HStack(alignment: .firstTextBaseline) {
@@ -203,6 +222,13 @@ private struct ProviderRow: View {
                     if badge == "Auth needed", self.provider == .cerebras {
                         Button("Set key") {
                             self.onCerebrasSetup()
+                        }
+                        .font(.caption2)
+                    }
+
+                    if badge == "Auth needed", self.provider == .minimax {
+                        Button("Set key") {
+                            self.onMinimaxSetup()
                         }
                         .font(.caption2)
                     }

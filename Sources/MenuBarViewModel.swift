@@ -15,6 +15,8 @@ final class MenuBarViewModel {
     var showZAIKeyEditor: Bool = false
     var cerebrasAPIKeyInput: String = ""
     var showCerebrasKeyEditor: Bool = false
+    var minimaxAPIKeyInput: String = ""
+    var showMinimaxKeyEditor: Bool = false
 
     init(store: UsageStore) {
         self.store = store
@@ -82,6 +84,26 @@ final class MenuBarViewModel {
 
     func cancelCerebrasKeyEditor() {
         self.showCerebrasKeyEditor = false
+    }
+
+    func openMinimaxKeyEditor() {
+        self.minimaxAPIKeyInput = AuthStore.loadMinimaxAPIKey() ?? ""
+        self.showMinimaxKeyEditor = true
+    }
+
+    func saveMinimaxKey() {
+        let trimmed = self.minimaxAPIKeyInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            AuthStore.clearMinimaxAPIKey()
+        } else {
+            _ = AuthStore.saveMinimaxAPIKey(trimmed)
+        }
+        self.showMinimaxKeyEditor = false
+        self.refreshNow()
+    }
+
+    func cancelMinimaxKeyEditor() {
+        self.showMinimaxKeyEditor = false
     }
 
     var updateAvailableVersion: String? {
