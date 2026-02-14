@@ -1,6 +1,6 @@
 # AI Usage Monitor
 
-A native SwiftUI macOS menu bar app that shows remaining subscription usage for your AI coding tools — Claude, Gemini, Codex, Cerebras, and Z.AI — all in one place.
+A native SwiftUI macOS menu bar app that shows remaining subscription usage for your AI coding tools — Claude, Gemini, Codex, Cerebras, Minimax, and Z.AI — all in one place.
 
 Tiny footprint: ~27 MB RAM, refreshes every 60 seconds.
 
@@ -31,6 +31,7 @@ Download the latest `.dmg` from [Releases](../../releases/latest), open it, and 
 - Reuses local auth context from `~/.codex`, and `~/.gemini` where available.
 - Supports Claude auth from local Claude credential files, `CLAUDE_ACCESS_TOKEN`, or a pasted setup-token.
 - Includes Z.AI provider support via a pasted API key or env keys (`ZAI_API_KEY`, `ZAI_KEY`, `ZHIPU_API_KEY`, `ZHIPUAI_API_KEY`).
+- Includes Minimax provider support via a pasted API key.
 
 ## Build
 
