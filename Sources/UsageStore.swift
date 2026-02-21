@@ -68,6 +68,7 @@ actor UsageStore {
 
         await withTaskGroup(of: ProviderUsageResult.self) { group in
             for client in self.clients {
+                guard AuthStore.isProviderEnabled(client.providerID) else { continue }
                 group.addTask {
                     await client.fetchUsage(now: now)
                 }

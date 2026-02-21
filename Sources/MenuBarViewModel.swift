@@ -19,9 +19,11 @@ final class MenuBarViewModel {
     var showKimiKeyEditor: Bool = false
     var minimaxAPIKeyInput: String = ""
     var showMinimaxKeyEditor: Bool = false
+    var providerEnabled: [ProviderID: Bool] = [:]
 
     init(store: UsageStore) {
         self.store = store
+        self.providerEnabled = Dictionary(uniqueKeysWithValues: ProviderID.allCases.map { ($0, AuthStore.isProviderEnabled($0)) })
         self.start()
     }
 
@@ -147,6 +149,18 @@ final class MenuBarViewModel {
             AuthStore.clearMinimaxAPIKey()
         }
         self.refreshNow()
+    }
+
+    func isProviderEnabled(_ provider: ProviderID) -> Bool {
+        self.providerEnabled[provider] ?? true
+    }
+
+    func setProviderEnabled(_ provider: ProviderID, _ enabled: Bool) {
+        self.providerEnabled[provider] = enabled
+        AuthStore.setProviderEnabled(provider, enabled)
+        if enabled {
+            self.refreshNow()
+        }
     }
 
     var updateAvailableVersion: String? {

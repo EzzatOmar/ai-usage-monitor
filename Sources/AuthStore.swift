@@ -104,6 +104,17 @@ enum AuthStore {
         self.removeFileIfPresent(LocalPaths.geminiOAuthPath())
     }
 
+    static func isProviderEnabled(_ provider: ProviderID) -> Bool {
+        if self.defaults.object(forKey: self.providerEnabledKey(for: provider)) == nil {
+            return true
+        }
+        return self.defaults.bool(forKey: self.providerEnabledKey(for: provider))
+    }
+
+    static func setProviderEnabled(_ provider: ProviderID, _ enabled: Bool) {
+        self.defaults.set(enabled, forKey: self.providerEnabledKey(for: provider))
+    }
+
     static func readClaudeTokenFromKeychainIfEnabled() -> String? {
         readClaudeKeychainCredentials()?.accessToken
     }
@@ -120,6 +131,10 @@ enum AuthStore {
         if FileManager.default.fileExists(atPath: url.path) {
             try? FileManager.default.removeItem(at: url)
         }
+    }
+
+    private static func providerEnabledKey(for provider: ProviderID) -> String {
+        "aiUsageMonitor.providerEnabled.\(provider.rawValue)"
     }
 
     static func readClaudeKeychainCredentials() -> ClaudeKeychainCredentials? {

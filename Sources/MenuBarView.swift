@@ -19,6 +19,10 @@ struct MenuBarRootView: View {
                 ProviderRow(
                     result: self.model.snapshot.results.first(where: { $0.provider == provider }),
                     provider: provider,
+                    isEnabled: Binding(
+                        get: { self.model.isProviderEnabled(provider) },
+                        set: { self.model.setProviderEnabled(provider, $0) }
+                    ),
                     onClaudeKeychainAccess: { self.model.enableClaudeKeychainAccess() },
                     claudeKeychainEnabled: self.model.claudeKeychainEnabled,
                     onZAISetup: { self.model.openZAIKeyEditor() },
@@ -158,6 +162,7 @@ struct MenuBarRootView: View {
 private struct ProviderRow: View {
     let result: ProviderUsageResult?
     let provider: ProviderID
+    @Binding var isEnabled: Bool
     let onClaudeKeychainAccess: () -> Void
     let claudeKeychainEnabled: Bool
     let onZAISetup: () -> Void
@@ -169,8 +174,14 @@ private struct ProviderRow: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: 3) {
-                Text(self.provider.rawValue)
-                    .font(.subheadline.weight(.semibold))
+                HStack(spacing: 8) {
+                    Text(self.provider.rawValue)
+                        .font(.subheadline.weight(.semibold))
+                    Toggle("", isOn: self.$isEnabled)
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                        .controlSize(.mini)
+                }
                 if let result {
                     if !result.modelWindows.isEmpty {
                         ForEach(result.modelWindows, id: \.modelId) { item in
@@ -218,7 +229,7 @@ private struct ProviderRow: View {
             Spacer()
 
             VStack(alignment: .trailing, spacing: 5) {
-                if let badge = self.result?.errorState?.badgeText {
+                if self.isEnabled, let badge = self.result?.errorState?.badgeText {
                     Text(badge)
                         .font(.caption2)
                         .padding(.horizontal, 8)
