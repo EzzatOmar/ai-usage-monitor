@@ -1,6 +1,14 @@
 # AI Usage Monitor
 
-A native SwiftUI macOS menu bar app that shows remaining subscription usage for your AI coding tools — Claude, Gemini, Codex, Cerebras, Kimi, Minimax, and Z.AI — all in one place.
+A native SwiftUI macOS menu bar app that shows remaining subscription usage for your AI coding tools in one place:
+
+- Claude
+- Gemini
+- Codex
+- Cerebras
+- Kimi
+- Minimax
+- Z.AI
 
 Tiny footprint: ~27 MB RAM, refreshes every 60 seconds.
 
