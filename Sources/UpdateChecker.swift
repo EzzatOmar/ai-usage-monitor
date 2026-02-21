@@ -43,6 +43,14 @@ actor UpdateChecker {
 
     private init() {}
 
+    private static var updateLogURL: URL {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library")
+            .appendingPathComponent("Logs")
+            .appendingPathComponent("AIUsageMonitor")
+            .appendingPathComponent("update.log")
+    }
+
     deinit {
         self.pollTask?.cancel()
     }
@@ -117,8 +125,10 @@ actor UpdateChecker {
 
     func triggerDownloadAndInstall() async {
         guard case .available(_, let downloadURL) = self.status else { return }
+        self.log("Starting update download from \(downloadURL.absoluteString)")
         guard let appPath = Self.currentAppPath else {
             self.status = .error("Cannot determine app location")
+            self.log("Update failed: cannot determine app location")
             self.publish()
             return
         }
@@ -131,6 +141,7 @@ actor UpdateChecker {
             let (tempDMGURL, response) = try await URLSession.shared.download(from: downloadURL)
             guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
                 self.status = .error("Download failed")
+                self.log("Update failed: DMG download returned non-200 status")
                 self.publish()
                 return
             }
@@ -143,14 +154,19 @@ actor UpdateChecker {
             // 2. Mount DMG
             let mountProcess = Process()
             mountProcess.executableURL = URL(fileURLWithPath: "/usr/bin/hdiutil")
-            mountProcess.arguments = ["attach", dmgPath.path, "-nobrowse", "-quiet", "-plist"]
+            mountProcess.arguments = ["attach", dmgPath.path, "-nobrowse", "-plist"]
             let mountPipe = Pipe()
             mountProcess.standardOutput = mountPipe
+            let mountErrorPipe = Pipe()
+            mountProcess.standardError = mountErrorPipe
             try mountProcess.run()
             mountProcess.waitUntilExit()
 
             guard mountProcess.terminationStatus == 0 else {
                 self.status = .error("Failed to mount update")
+                let mountError = mountErrorPipe.fileHandleForReading.readDataToEndOfFile()
+                let message = String(data: mountError, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                self.log("Update failed: hdiutil attach returned \(mountProcess.terminationStatus). \(message)")
                 self.publish()
                 return
             }
@@ -162,9 +178,12 @@ actor UpdateChecker {
                   let entities = mountPlist["system-entities"] as? [[String: Any]],
                   let mountPoint = entities.first(where: { $0["mount-point"] != nil })?["mount-point"] as? String else {
                 self.status = .error("Failed to locate mounted volume")
+                self.log("Update failed: unable to parse mount plist")
                 self.publish()
                 return
             }
+
+            self.log("Mounted update DMG at \(mountPoint)")
 
             // 3. Find .app in mounted volume
             let volumeURL = URL(fileURLWithPath: mountPoint)
@@ -174,6 +193,7 @@ actor UpdateChecker {
             guard let appBundle = contents.first(where: { $0.pathExtension == "app" }) else {
                 self.unmountDMG(mountPoint: mountPoint)
                 self.status = .error("No app found in update")
+                self.log("Update failed: no .app bundle found in mounted DMG")
                 self.publish()
                 return
             }
@@ -193,6 +213,7 @@ actor UpdateChecker {
             // 7. Launch helper and quit
             guard let helperURL = Bundle.main.url(forResource: "update_helper", withExtension: "sh") else {
                 self.status = .error("Update helper not found")
+                self.log("Update failed: helper script missing in app bundle")
                 self.publish()
                 return
             }
@@ -214,6 +235,7 @@ actor UpdateChecker {
             // Detach so the helper survives our exit
             helper.qualityOfService = .utility
             try helper.run()
+            self.log("Update helper launched; app will terminate for install")
 
             // Quit the app
             await MainActor.run {
@@ -221,6 +243,7 @@ actor UpdateChecker {
             }
         } catch {
             self.status = .error("Update failed: \(error.localizedDescription)")
+            self.log("Update failed with error: \(error.localizedDescription)")
             self.publish()
         }
     }
@@ -252,6 +275,23 @@ actor UpdateChecker {
     private func publish() {
         for continuation in self.continuations.values {
             continuation.yield(self.status)
+        }
+    }
+
+    private func log(_ message: String) {
+        let timestamp = ISO8601DateFormatter().string(from: Date())
+        let line = "[\(timestamp)] \(message)\n"
+        let url = Self.updateLogURL
+        let directory = url.deletingLastPathComponent()
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+
+        if FileManager.default.fileExists(atPath: url.path),
+           let handle = try? FileHandle(forWritingTo: url) {
+            defer { try? handle.close() }
+            _ = try? handle.seekToEnd()
+            try? handle.write(contentsOf: Data(line.utf8))
+        } else {
+            try? Data(line.utf8).write(to: url)
         }
     }
 }

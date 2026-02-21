@@ -140,6 +140,10 @@ struct MenuBarRootView: View {
                 Text(message)
                     .font(.caption2)
                     .foregroundStyle(.red)
+                    .lineLimit(3)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             HStack {
