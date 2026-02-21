@@ -37,7 +37,7 @@ enum ProviderErrorState: Error, Sendable, Equatable {
         case .authNeeded:
             return "Add credentials to fetch usage"
         case .tokenExpired:
-            return "Token expired, update Claude auth"
+            return "Token expired, refresh provider authentication"
         case .endpointError(let message):
             return message
         case .parseError(let message):

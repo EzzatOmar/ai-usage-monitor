@@ -130,7 +130,11 @@ struct CodexClient: ProviderClient {
             throw ProviderErrorState.endpointError("Invalid refresh response")
         }
         if http.statusCode == 401 {
-            throw ProviderErrorState.tokenExpired
+            let body = String(data: data, encoding: .utf8)?.lowercased() ?? ""
+            if body.contains("refresh_token_reused") {
+                throw ProviderErrorState.endpointError("Codex auth is stale (refresh token reused). Run 'codex login' and then refresh.")
+            }
+            throw ProviderErrorState.endpointError("Codex token expired. Run 'codex login' and then refresh.")
         }
         guard http.statusCode == 200 else {
             throw ProviderErrorState.endpointError("Refresh failed (\(http.statusCode))")

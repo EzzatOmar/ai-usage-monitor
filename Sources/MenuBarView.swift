@@ -273,12 +273,14 @@ private struct ProviderRow: View {
                     }
                 }
 
-                Button("Remove auth") {
-                    self.onRemoveAuth()
+                if !self.isEnabled {
+                    Button("Remove auth") {
+                        self.onRemoveAuth()
+                    }
+                    .font(.caption2)
+                    .buttonStyle(.plain)
+                    .foregroundStyle(Color.blue.opacity(0.75))
                 }
-                .font(.caption2)
-                .buttonStyle(.plain)
-                .foregroundStyle(Color.blue.opacity(0.75))
             }
         }
     }
