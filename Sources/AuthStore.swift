@@ -81,8 +81,45 @@ enum AuthStore {
         self.defaults.removeObject(forKey: self.minimaxKeyName)
     }
 
+    static func clearClaudeAuth() {
+        self.setClaudeKeychainEnabled(false)
+        self.deleteClaudeKeychainCredentials()
+
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let paths = [
+            home.appendingPathComponent(".claude").appendingPathComponent(".credentials.json"),
+            home.appendingPathComponent(".claude").appendingPathComponent("credentials.json"),
+            home.appendingPathComponent(".config").appendingPathComponent("claude").appendingPathComponent("credentials.json"),
+        ]
+        for path in paths {
+            self.removeFileIfPresent(path)
+        }
+    }
+
+    static func clearCodexAuth() {
+        self.removeFileIfPresent(LocalPaths.codexAuthPath())
+    }
+
+    static func clearGeminiAuth() {
+        self.removeFileIfPresent(LocalPaths.geminiOAuthPath())
+    }
+
     static func readClaudeTokenFromKeychainIfEnabled() -> String? {
         readClaudeKeychainCredentials()?.accessToken
+    }
+
+    private static func deleteClaudeKeychainCredentials() {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: "Claude Code-credentials",
+        ]
+        _ = SecItemDelete(query as CFDictionary)
+    }
+
+    private static func removeFileIfPresent(_ url: URL) {
+        if FileManager.default.fileExists(atPath: url.path) {
+            try? FileManager.default.removeItem(at: url)
+        }
     }
 
     static func readClaudeKeychainCredentials() -> ClaudeKeychainCredentials? {

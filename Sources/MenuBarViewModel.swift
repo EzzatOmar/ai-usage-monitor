@@ -128,6 +128,27 @@ final class MenuBarViewModel {
         self.showMinimaxKeyEditor = false
     }
 
+    func clearAuth(for provider: ProviderID) {
+        switch provider {
+        case .claude:
+            AuthStore.clearClaudeAuth()
+            self.claudeKeychainEnabled = AuthStore.isClaudeKeychainEnabled()
+        case .codex:
+            AuthStore.clearCodexAuth()
+        case .gemini:
+            AuthStore.clearGeminiAuth()
+        case .zai:
+            AuthStore.clearZAIAPIKey()
+        case .cerebras:
+            AuthStore.clearCerebrasAPIKey()
+        case .kimi:
+            AuthStore.clearKimiAPIKey()
+        case .minimax:
+            AuthStore.clearMinimaxAPIKey()
+        }
+        self.refreshNow()
+    }
+
     var updateAvailableVersion: String? {
         if case .available(let version, _) = self.updateStatus {
             return version

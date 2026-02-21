@@ -24,7 +24,8 @@ struct MenuBarRootView: View {
                     onZAISetup: { self.model.openZAIKeyEditor() },
                     onCerebrasSetup: { self.model.openCerebrasKeyEditor() },
                     onKimiSetup: { self.model.openKimiKeyEditor() },
-                    onMinimaxSetup: { self.model.openMinimaxKeyEditor() }
+                    onMinimaxSetup: { self.model.openMinimaxKeyEditor() },
+                    onRemoveAuth: { self.model.clearAuth(for: provider) }
                 )
             }
 
@@ -163,6 +164,7 @@ private struct ProviderRow: View {
     let onCerebrasSetup: () -> Void
     let onKimiSetup: () -> Void
     let onMinimaxSetup: () -> Void
+    let onRemoveAuth: () -> Void
 
     var body: some View {
         HStack(alignment: .firstTextBaseline) {
@@ -215,8 +217,8 @@ private struct ProviderRow: View {
 
             Spacer()
 
-            if let badge = self.result?.errorState?.badgeText {
-                VStack(alignment: .trailing, spacing: 5) {
+            VStack(alignment: .trailing, spacing: 5) {
+                if let badge = self.result?.errorState?.badgeText {
                     Text(badge)
                         .font(.caption2)
                         .padding(.horizontal, 8)
@@ -259,6 +261,13 @@ private struct ProviderRow: View {
                         .font(.caption2)
                     }
                 }
+
+                Button("Remove auth") {
+                    self.onRemoveAuth()
+                }
+                .font(.caption2)
+                .buttonStyle(.plain)
+                .foregroundStyle(Color.blue.opacity(0.75))
             }
         }
     }
