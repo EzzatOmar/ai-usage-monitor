@@ -23,6 +23,7 @@ struct MenuBarRootView: View {
                     claudeKeychainEnabled: self.model.claudeKeychainEnabled,
                     onZAISetup: { self.model.openZAIKeyEditor() },
                     onCerebrasSetup: { self.model.openCerebrasKeyEditor() },
+                    onKimiSetup: { self.model.openKimiKeyEditor() },
                     onMinimaxSetup: { self.model.openMinimaxKeyEditor() }
                 )
             }
@@ -79,6 +80,23 @@ struct MenuBarRootView: View {
                         Button("Cancel") { self.model.cancelMinimaxKeyEditor() }
                         Spacer()
                         Button("Save") { self.model.saveMinimaxKey() }
+                    }
+                }
+            }
+
+            if self.model.showKimiKeyEditor {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Set Kimi Code API key")
+                        .font(.caption.weight(.semibold))
+                    Text("Paste your Kimi Code key from kimi.com/code/console.")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    SecureField("KIMI_API_KEY", text: self.$model.kimiAPIKeyInput)
+                        .textFieldStyle(.roundedBorder)
+                    HStack {
+                        Button("Cancel") { self.model.cancelKimiKeyEditor() }
+                        Spacer()
+                        Button("Save") { self.model.saveKimiKey() }
                     }
                 }
             }
@@ -143,6 +161,7 @@ private struct ProviderRow: View {
     let claudeKeychainEnabled: Bool
     let onZAISetup: () -> Void
     let onCerebrasSetup: () -> Void
+    let onKimiSetup: () -> Void
     let onMinimaxSetup: () -> Void
 
     var body: some View {
@@ -229,6 +248,13 @@ private struct ProviderRow: View {
                     if badge == "Auth needed", self.provider == .minimax {
                         Button("Set key") {
                             self.onMinimaxSetup()
+                        }
+                        .font(.caption2)
+                    }
+
+                    if badge == "Auth needed", self.provider == .kimi {
+                        Button("Set key") {
+                            self.onKimiSetup()
                         }
                         .font(.caption2)
                     }

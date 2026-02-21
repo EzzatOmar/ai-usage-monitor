@@ -6,6 +6,7 @@ enum ProviderID: String, CaseIterable, Sendable {
     case gemini = "Gemini"
     case zai = "Z.AI"
     case cerebras = "Cerebras"
+    case kimi = "Kimi"
     case minimax = "Minimax"
 }
 

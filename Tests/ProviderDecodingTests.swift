@@ -140,4 +140,95 @@ final class ProviderDecodingTests: XCTestCase {
         XCTAssertEqual(primary!.usedPercent, 94.33, accuracy: 0.1)
         XCTAssertEqual(accountLabel, "MiniMax-M2: 4245/4500 prompts")
     }
+
+    func test_kimiDecodeUsage_weeklyAndFiveHour() throws {
+        let data = Data(
+            """
+            {
+              "usage": {
+                "name": "Weekly limit",
+                "used": 320,
+                "limit": 2048,
+                "resetAt": "2030-01-08T10:00:00Z"
+              },
+              "limits": [
+                {
+                  "name": "5h token quota",
+                  "window": { "duration": 300, "timeUnit": "MINUTE" },
+                  "detail": {
+                    "name": "5h token quota",
+                    "used": 180,
+                    "limit": 1200,
+                    "resetAt": "2030-01-01T15:00:00Z"
+                  }
+                },
+                {
+                  "name": "Weekly limit",
+                  "window": { "duration": 7, "timeUnit": "DAY" },
+                  "detail": {
+                    "name": "Weekly limit",
+                    "used": 320,
+                    "limit": 2048,
+                    "resetAt": "2030-01-08T10:00:00Z"
+                  }
+                }
+              ]
+            }
+            """.utf8
+        )
+
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let (primary, secondary, accountLabel) = try KimiClient.decodeUsageResponse(data, now: now)
+
+        XCTAssertNotNil(primary)
+        XCTAssertNotNil(secondary)
+        XCTAssertEqual(primary!.windowSeconds, 300 * 60)
+        XCTAssertEqual(secondary!.windowSeconds, 7 * 24 * 3600)
+        XCTAssertEqual(primary!.usedPercent, 15, accuracy: 0.001)
+        XCTAssertEqual(secondary!.usedPercent, 15.625, accuracy: 0.001)
+        XCTAssertEqual(accountLabel, "Kimi Code: 320/2048 requests")
+    }
+
+    func test_kimiDecodeUsage_stringNumbersFromAPI() throws {
+        let data = Data(
+            """
+            {
+              "user": {
+                "userId": "u1"
+              },
+              "usage": {
+                "limit": "100",
+                "used": "15",
+                "remaining": "85",
+                "resetTime": "2026-02-25T11:47:50.533528Z"
+              },
+              "limits": [
+                {
+                  "window": {
+                    "duration": 300,
+                    "timeUnit": "TIME_UNIT_MINUTE"
+                  },
+                  "detail": {
+                    "limit": "100",
+                    "used": "1",
+                    "remaining": "99",
+                    "resetTime": "2026-02-22T00:47:50.533528Z"
+                  }
+                }
+              ]
+            }
+            """.utf8
+        )
+
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let (primary, secondary, accountLabel) = try KimiClient.decodeUsageResponse(data, now: now)
+
+        XCTAssertNotNil(primary)
+        XCTAssertNotNil(secondary)
+        XCTAssertEqual(primary!.windowSeconds, 300 * 60)
+        XCTAssertEqual(primary!.usedPercent, 1, accuracy: 0.001)
+        XCTAssertEqual(secondary!.windowSeconds, 7 * 24 * 3600)
+        XCTAssertEqual(secondary!.usedPercent, 15, accuracy: 0.001)
+        XCTAssertEqual(accountLabel, "Kimi Code: 15/100 requests")
+    }
 }

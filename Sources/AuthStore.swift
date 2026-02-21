@@ -6,6 +6,7 @@ enum AuthStore {
     private static let zaiKeyName = "aiUsageMonitor.zaiApiKey"
     private static let claudeKeychainEnabledName = "aiUsageMonitor.claudeUseKeychain"
     private static let cerebrasKeyName = "aiUsageMonitor.cerebrasApiKey"
+    private static let kimiKeyName = "aiUsageMonitor.kimiApiKey"
     private static let minimaxKeyName = "aiUsageMonitor.minimaxApiKey"
 
     static func loadZAIAPIKey() -> String? {
@@ -46,6 +47,22 @@ enum AuthStore {
 
     static func clearCerebrasAPIKey() {
         self.defaults.removeObject(forKey: self.cerebrasKeyName)
+    }
+
+    static func loadKimiAPIKey() -> String? {
+        let value = self.defaults.string(forKey: self.kimiKeyName)?.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let value, !value.isEmpty else { return nil }
+        return value
+    }
+
+    static func saveKimiAPIKey(_ value: String) -> Bool {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.defaults.set(trimmed, forKey: self.kimiKeyName)
+        return true
+    }
+
+    static func clearKimiAPIKey() {
+        self.defaults.removeObject(forKey: self.kimiKeyName)
     }
 
     static func loadMinimaxAPIKey() -> String? {

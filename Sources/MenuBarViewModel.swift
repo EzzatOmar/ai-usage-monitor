@@ -15,6 +15,8 @@ final class MenuBarViewModel {
     var showZAIKeyEditor: Bool = false
     var cerebrasAPIKeyInput: String = ""
     var showCerebrasKeyEditor: Bool = false
+    var kimiAPIKeyInput: String = ""
+    var showKimiKeyEditor: Bool = false
     var minimaxAPIKeyInput: String = ""
     var showMinimaxKeyEditor: Bool = false
 
@@ -84,6 +86,26 @@ final class MenuBarViewModel {
 
     func cancelCerebrasKeyEditor() {
         self.showCerebrasKeyEditor = false
+    }
+
+    func openKimiKeyEditor() {
+        self.kimiAPIKeyInput = AuthStore.loadKimiAPIKey() ?? ""
+        self.showKimiKeyEditor = true
+    }
+
+    func saveKimiKey() {
+        let trimmed = self.kimiAPIKeyInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            AuthStore.clearKimiAPIKey()
+        } else {
+            _ = AuthStore.saveKimiAPIKey(trimmed)
+        }
+        self.showKimiKeyEditor = false
+        self.refreshNow()
+    }
+
+    func cancelKimiKeyEditor() {
+        self.showKimiKeyEditor = false
     }
 
     func openMinimaxKeyEditor() {
