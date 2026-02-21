@@ -208,7 +208,7 @@ private struct ProviderRow: View {
                     }
 
                     if let errorDetail = result.errorState?.detailText {
-                        Text(errorDetail)
+                        Text(self.provider == .codex && result.errorState == .authNeeded ? "Run 'codex login' in terminal" : errorDetail)
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                             .lineLimit(2)
@@ -273,7 +273,10 @@ private struct ProviderRow: View {
                     }
                 }
 
-                if !self.isEnabled {
+                if !self.isEnabled,
+                   self.provider != .claude,
+                   self.provider != .codex,
+                   self.provider != .gemini {
                     Button("Remove auth") {
                         self.onRemoveAuth()
                     }
