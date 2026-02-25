@@ -231,4 +231,25 @@ final class ProviderDecodingTests: XCTestCase {
         XCTAssertEqual(secondary!.usedPercent, 15, accuracy: 0.001)
         XCTAssertEqual(accountLabel, "Kimi Code: 15/100 requests")
     }
+
+    func test_claudeRefreshPolicy_respectsCooldown() {
+        var policy = ClaudeCLIRefreshPolicy(cooldown: 600, lastLaunchAt: nil)
+        let now = Date(timeIntervalSince1970: 1_000)
+
+        XCTAssertTrue(policy.canLaunch(now: now))
+
+        policy.markLaunch(at: now)
+        XCTAssertFalse(policy.canLaunch(now: now.addingTimeInterval(599)))
+        XCTAssertTrue(policy.canLaunch(now: now.addingTimeInterval(600)))
+    }
+
+    func test_claudeAutoRefreshTrigger_onlyForExpirations() {
+        XCTAssertTrue(ClaudeClient.shouldTriggerAutoClaudeCLI(for: .tokenExpired))
+        XCTAssertTrue(ClaudeClient.shouldTriggerAutoClaudeCLI(for: .endpointError("Token expired - run 'claude' in terminal to refresh")))
+        XCTAssertTrue(ClaudeClient.shouldTriggerAutoClaudeCLI(for: .endpointError("Run 'claude' in terminal to refresh token")))
+
+        XCTAssertFalse(ClaudeClient.shouldTriggerAutoClaudeCLI(for: .authNeeded))
+        XCTAssertFalse(ClaudeClient.shouldTriggerAutoClaudeCLI(for: .networkError("offline")))
+        XCTAssertFalse(ClaudeClient.shouldTriggerAutoClaudeCLI(for: .parseError("bad payload")))
+    }
 }

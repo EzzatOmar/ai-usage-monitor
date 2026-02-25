@@ -45,6 +45,7 @@ struct ClaudeClient: ProviderClient {
 
             throw lastProviderError ?? ProviderErrorState.authNeeded
         } catch let error as ProviderErrorState {
+            Self.maybeTriggerBackgroundTokenRefresh(for: error)
             return ProviderUsageResult(
                 provider: .claude,
                 primaryWindow: nil,
@@ -56,6 +57,25 @@ struct ClaudeClient: ProviderClient {
             )
         } catch {
             return ProviderUsageResult(provider: .claude, primaryWindow: nil, secondaryWindow: nil, accountLabel: nil, lastUpdated: now, errorState: .networkError(error.localizedDescription), isStale: false)
+        }
+    }
+
+    private static func maybeTriggerBackgroundTokenRefresh(for error: ProviderErrorState) {
+        guard self.shouldTriggerAutoClaudeCLI(for: error) else { return }
+        Task.detached(priority: .utility) {
+            await ClaudeCLISessionManager.shared.triggerRefreshIfNeeded()
+        }
+    }
+
+    static func shouldTriggerAutoClaudeCLI(for error: ProviderErrorState) -> Bool {
+        switch error {
+        case .tokenExpired:
+            return true
+        case .endpointError(let message):
+            let lowered = message.lowercased()
+            return lowered.contains("run 'claude'") || lowered.contains("token expired") || lowered.contains("refresh token")
+        case .authNeeded, .parseError, .networkError:
+            return false
         }
     }
 
