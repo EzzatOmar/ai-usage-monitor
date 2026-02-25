@@ -1,4 +1,5 @@
 import Foundation
+import Darwin
 
 struct ClaudeCLIRefreshPolicy {
     let cooldown: TimeInterval
@@ -18,72 +19,83 @@ actor ClaudeCLISessionManager {
     static let shared = ClaudeCLISessionManager()
 
     private static let cooldownSeconds: TimeInterval = 600
-    private static let autoCloseDelay: UInt64 = 15_000_000_000
-    private static let secondCloseDelay: UInt64 = 2_000_000_000
+    private static let autoStopDelay: UInt64 = 15_000_000_000
+    private static let secondStopCheckDelay: UInt64 = 2_000_000_000
 
     private var policy: ClaudeCLIRefreshPolicy
-    private var trackedTTY: String?
-    private var trackedWindowID: String?
-    private var closeTask: Task<Void, Never>?
+    private var activeProcess: Process?
+    private var activeSessionID: UUID?
+    private var stopTask: Task<Void, Never>?
 
     private init() {
         self.policy = ClaudeCLIRefreshPolicy(cooldown: Self.cooldownSeconds, lastLaunchAt: nil)
     }
 
     func triggerRefreshIfNeeded() async {
-        let now = Date()
-
-        if let tty = self.trackedTTY {
-            if self.isSessionOpen(tty: tty) {
+        if let process = self.activeProcess {
+            if process.isRunning {
                 return
             }
-            self.clearTrackedSessionReference()
+            self.clearActiveProcess()
         }
 
+        let now = Date()
         guard self.policy.canLaunch(now: now) else { return }
         guard self.isClaudeInstalled() else { return }
 
-        guard let session = self.launchClaudeSession() else { return }
-        self.trackedTTY = session.tty
-        self.trackedWindowID = session.windowID
+        await self.stopActiveProcessIfNeeded()
+
+        guard let process = self.launchClaudeInBackground() else { return }
+
+        let sessionID = UUID()
+        self.activeSessionID = sessionID
+        self.activeProcess = process
         self.policy.markLaunch(at: now)
 
-        self.closeTask?.cancel()
-        self.closeTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: Self.autoCloseDelay)
-            await self?.closeTrackedSessionWithDoubleCheck()
+        self.stopTask?.cancel()
+        self.stopTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: Self.autoStopDelay)
+            await self?.stopSessionIfNeeded(sessionID: sessionID)
         }
     }
 
-    private func closeTrackedSessionWithDoubleCheck() async {
-        guard let tty = self.trackedTTY else { return }
+    private func stopActiveProcessIfNeeded() async {
+        guard let process = self.activeProcess else { return }
+        await self.stopProcessWithDoubleCheck(process)
+        self.clearActiveProcess()
+    }
 
-        _ = self.closeSession(tty: tty)
-        if !self.isSessionOpen(tty: tty) {
-            self.clearTrackedSessionReference()
-            return
-        }
-
-        try? await Task.sleep(nanoseconds: Self.secondCloseDelay)
-
-        _ = self.closeSession(tty: tty)
-        if !self.isSessionOpen(tty: tty) {
-            self.clearTrackedSessionReference()
+    private func stopSessionIfNeeded(sessionID: UUID) async {
+        guard sessionID == self.activeSessionID, let process = self.activeProcess else { return }
+        await self.stopProcessWithDoubleCheck(process)
+        if sessionID == self.activeSessionID {
+            self.clearActiveProcess()
         }
     }
 
-    private func clearTrackedSessionReference() {
-        self.trackedTTY = nil
-        self.trackedWindowID = nil
+    private func stopProcessWithDoubleCheck(_ process: Process) async {
+        guard process.isRunning else { return }
+
+        process.terminate()
+        if !process.isRunning { return }
+
+        try? await Task.sleep(nanoseconds: Self.secondStopCheckDelay)
+        if process.isRunning {
+            _ = kill(process.processIdentifier, SIGKILL)
+        }
+    }
+
+    private func clearActiveProcess() {
+        self.activeProcess = nil
+        self.activeSessionID = nil
     }
 
     private func isClaudeInstalled() -> Bool {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
         process.arguments = ["which", "claude"]
-        let output = Pipe()
-        process.standardOutput = output
-        process.standardError = Pipe()
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
 
         do {
             try process.run()
@@ -94,91 +106,25 @@ actor ClaudeCLISessionManager {
         }
     }
 
-    private func launchClaudeSession() -> (windowID: String, tty: String)? {
-        let separator = "|"
-        let result = self.runAppleScript([
-            "tell application \"Terminal\"",
-            "activate",
-            "do script \"claude\"",
-            "delay 0.2",
-            "set targetWindow to front window",
-            "set targetTab to selected tab of targetWindow",
-            "return ((id of targetWindow) as string) & \"\(separator)\" & (tty of targetTab)",
-            "end tell",
-        ])
-
-        guard let raw = result, !raw.isEmpty else { return nil }
-        let parts = raw.split(separator: Character(separator), maxSplits: 1).map(String.init)
-        guard parts.count == 2 else { return nil }
-        let windowID = parts[0].trimmingCharacters(in: .whitespacesAndNewlines)
-        let tty = parts[1].trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !windowID.isEmpty, !tty.isEmpty else { return nil }
-        return (windowID: windowID, tty: tty)
-    }
-
-    private func closeSession(tty: String) -> Bool {
-        let escapedTTY = tty.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
-        let result = self.runAppleScript([
-            "tell application \"Terminal\"",
-            "repeat with w in windows",
-            "repeat with t in tabs of w",
-            "if (tty of t) is \"\(escapedTTY)\" then",
-            "do script \"exit\" in t",
-            "delay 0.2",
-            "if (count of tabs of w) > 1 then",
-            "close t",
-            "else",
-            "close w",
-            "end if",
-            "return \"closed\"",
-            "end if",
-            "end repeat",
-            "end repeat",
-            "return \"not_found\"",
-            "end tell",
-        ])
-        return result == "closed"
-    }
-
-    private func isSessionOpen(tty: String) -> Bool {
-        let escapedTTY = tty.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
-        let result = self.runAppleScript([
-            "tell application \"Terminal\"",
-            "repeat with w in windows",
-            "repeat with t in tabs of w",
-            "if (tty of t) is \"\(escapedTTY)\" then",
-            "return \"open\"",
-            "end if",
-            "end repeat",
-            "end repeat",
-            "return \"closed\"",
-            "end tell",
-        ])
-        return result == "open"
-    }
-
-    private func runAppleScript(_ lines: [String]) -> String? {
+    private func launchClaudeInBackground() -> Process? {
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
-
-        var args: [String] = []
-        args.reserveCapacity(lines.count * 2)
-        for line in lines {
-            args.append("-e")
-            args.append(line)
-        }
-        process.arguments = args
-
-        let output = Pipe()
-        process.standardOutput = output
-        process.standardError = Pipe()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+        process.arguments = [
+            "claude",
+            "--print",
+            "refresh",
+            "--output-format",
+            "text",
+            "--no-session-persistence",
+        ]
+        process.currentDirectoryURL = FileManager.default.homeDirectoryForCurrentUser
+        process.standardInput = FileHandle.nullDevice
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
 
         do {
             try process.run()
-            process.waitUntilExit()
-            guard process.terminationStatus == 0 else { return nil }
-            let data = output.fileHandleForReading.readDataToEndOfFile()
-            return String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
+            return process
         } catch {
             return nil
         }
