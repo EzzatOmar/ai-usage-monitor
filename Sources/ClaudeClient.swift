@@ -3,6 +3,9 @@ import Foundation
 struct ClaudeClient: ProviderClient {
     let providerID: ProviderID = .claude
 
+    static let anthropicUserAgent = "claude-cli/2.1.80"
+    private static let maxRateLimitAttempts = 2
+
     func fetchUsage(now: Date, mode _: UsageRefreshMode) async -> ProviderUsageResult {
         do {
             let candidates = try Self.loadCredentialCandidates()
@@ -183,39 +186,54 @@ struct ClaudeClient: ProviderClient {
         guard let url = URL(string: "https://api.anthropic.com/api/oauth/usage") else {
             throw ProviderErrorState.endpointError("Invalid Claude endpoint")
         }
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Accept")
-        request.setValue("oauth-2025-04-20", forHTTPHeaderField: "anthropic-beta")
-        request.setValue("AIUsageMonitor", forHTTPHeaderField: "User-Agent")
+        var lastRateLimited: ProviderErrorState?
 
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse else {
-            throw ProviderErrorState.endpointError("Invalid Claude response")
-        }
-        switch http.statusCode {
-        case 200:
-            guard let decoded = try? JSONDecoder().decode(OAuthUsageResponse.self, from: data) else {
-                throw ProviderErrorState.parseError("Invalid Claude usage payload")
+        for attempt in 0..<Self.maxRateLimitAttempts {
+            var request = URLRequest(url: url)
+            request.httpMethod = "GET"
+            request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+            request.setValue("application/json", forHTTPHeaderField: "Accept")
+            request.setValue("oauth-2025-04-20", forHTTPHeaderField: "anthropic-beta")
+            request.setValue(Self.anthropicUserAgent, forHTTPHeaderField: "User-Agent")
+
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse else {
+                throw ProviderErrorState.endpointError("Invalid Claude response")
             }
-            return decoded
-        case 429:
-            let body = String(data: data, encoding: .utf8)?
-                .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            let message = body.isEmpty ? "HTTP 429" : "HTTP 429: \(body)"
-            throw ProviderErrorState.rateLimited(message, retryAfter: http.retryAfterTimeInterval)
-        case 401, 403:
-            throw ProviderErrorState.tokenExpired
-        default:
-            let body = String(data: data, encoding: .utf8)?
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-                .prefix(180) ?? ""
-            if body.isEmpty {
-                throw ProviderErrorState.endpointError("HTTP \(http.statusCode)")
+
+            switch http.statusCode {
+            case 200:
+                guard let decoded = try? JSONDecoder().decode(OAuthUsageResponse.self, from: data) else {
+                    throw ProviderErrorState.parseError("Invalid Claude usage payload")
+                }
+                return decoded
+            case 429:
+                let body = String(data: data, encoding: .utf8)?
+                    .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                let message = body.isEmpty ? "HTTP 429" : "HTTP 429: \(body)"
+                let error = ProviderErrorState.rateLimited(message, retryAfter: http.retryAfterTimeInterval)
+                lastRateLimited = error
+                guard attempt + 1 < Self.maxRateLimitAttempts,
+                      let retryAfter = error.retryAfter,
+                      retryAfter > 0
+                else {
+                    throw error
+                }
+                try? await Task.sleep(nanoseconds: UInt64(retryAfter * 1_000_000_000))
+            case 401, 403:
+                throw ProviderErrorState.tokenExpired
+            default:
+                let body = String(data: data, encoding: .utf8)?
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                    .prefix(180) ?? ""
+                if body.isEmpty {
+                    throw ProviderErrorState.endpointError("HTTP \(http.statusCode)")
+                }
+                throw ProviderErrorState.endpointError("HTTP \(http.statusCode): \(body)")
             }
-            throw ProviderErrorState.endpointError("HTTP \(http.statusCode): \(body)")
         }
+
+        throw lastRateLimited ?? ProviderErrorState.endpointError("Claude usage request failed")
     }
 
     private static func parseISO8601(_ raw: String?) -> Date? {
@@ -236,5 +254,6 @@ extension ClaudeClient {
         let decoded = try JSONDecoder().decode(OAuthUsageResponse.self, from: data)
         return (decoded.fiveHour?.utilization, decoded.sevenDay?.utilization)
     }
+
 }
 #endif

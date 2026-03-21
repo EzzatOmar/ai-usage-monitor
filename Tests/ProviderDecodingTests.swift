@@ -254,6 +254,10 @@ final class ProviderDecodingTests: XCTestCase {
         XCTAssertFalse(ClaudeClient.shouldTriggerAutoClaudeCLI(for: .parseError("bad payload")))
     }
 
+    func test_claudeUsesClaudeCLIUserAgentForAnthropicRequests() {
+        XCTAssertEqual(ClaudeClient.anthropicUserAgent, "claude-cli/2.1.80")
+    }
+
     func test_codexDecodeOpenCodeCredentials_extractsAccountIDFromJWT() throws {
         let token = makeJWT(payload: [
             "chatgpt_account_id": "acct_123"
