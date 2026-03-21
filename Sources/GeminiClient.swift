@@ -3,7 +3,7 @@ import Foundation
 struct GeminiClient: ProviderClient {
     let providerID: ProviderID = .gemini
 
-    func fetchUsage(now: Date) async -> ProviderUsageResult {
+    func fetchUsage(now: Date, mode _: UsageRefreshMode) async -> ProviderUsageResult {
         do {
             let authType = try Self.loadAuthType()
             if authType == "api-key" || authType == "vertex-ai" {
@@ -107,6 +107,7 @@ struct GeminiClient: ProviderClient {
         }
         guard http.statusCode == 200 else {
             if http.statusCode == 401 { throw ProviderErrorState.tokenExpired }
+            if http.statusCode == 429 { throw ProviderErrorState.rateLimited("HTTP 429", retryAfter: http.retryAfterTimeInterval) }
             throw ProviderErrorState.endpointError("HTTP \(http.statusCode)")
         }
         guard let parsed = try? JSONDecoder().decode(LoadCodeAssistResponse.self, from: data) else {
@@ -142,6 +143,7 @@ struct GeminiClient: ProviderClient {
         }
         guard http.statusCode == 200 else {
             if http.statusCode == 401 { throw ProviderErrorState.tokenExpired }
+            if http.statusCode == 429 { throw ProviderErrorState.rateLimited("HTTP 429", retryAfter: http.retryAfterTimeInterval) }
             throw ProviderErrorState.endpointError("HTTP \(http.statusCode)")
         }
         guard let decoded = try? JSONDecoder().decode(QuotaResponse.self, from: data) else {

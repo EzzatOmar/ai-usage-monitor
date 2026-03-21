@@ -3,7 +3,7 @@ import Foundation
 struct ZAIClient: ProviderClient {
     let providerID: ProviderID = .zai
 
-    func fetchUsage(now: Date) async -> ProviderUsageResult {
+    func fetchUsage(now: Date, mode _: UsageRefreshMode) async -> ProviderUsageResult {
         guard let apiKey = Self.loadAPIKey() else {
             return ProviderUsageResult(
                 provider: .zai,
@@ -108,6 +108,9 @@ struct ZAIClient: ProviderClient {
         guard http.statusCode == 200 else {
             if http.statusCode == 401 || http.statusCode == 403 {
                 throw ProviderErrorState.tokenExpired
+            }
+            if http.statusCode == 429 {
+                throw ProviderErrorState.rateLimited("HTTP 429", retryAfter: http.retryAfterTimeInterval)
             }
             throw ProviderErrorState.endpointError("HTTP \(http.statusCode)")
         }

@@ -167,6 +167,7 @@ private struct ProviderRow: View {
     let result: ProviderUsageResult?
     let provider: ProviderID
     @Binding var isEnabled: Bool
+    @State private var showingErrorDetails = false
     let onClaudeKeychainAccess: () -> Void
     let claudeKeychainEnabled: Bool
     let onZAISetup: () -> Void
@@ -212,10 +213,27 @@ private struct ProviderRow: View {
                     }
 
                     if let errorDetail = result.errorState?.detailText {
-                        Text(self.provider == .codex && result.errorState == .authNeeded ? "Run 'codex login' in terminal" : errorDetail)
+                        Text(self.inlineErrorDetail(for: errorDetail))
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                             .lineLimit(2)
+
+                        Button("Show error") {
+                            self.showingErrorDetails = true
+                        }
+                        .font(.caption2)
+                        .buttonStyle(.plain)
+                        .foregroundStyle(Color.blue.opacity(0.85))
+                        .popover(isPresented: self.$showingErrorDetails, arrowEdge: .trailing) {
+                            ScrollView {
+                                Text(self.fullErrorDetail(for: errorDetail))
+                                    .font(.system(.caption, design: .monospaced))
+                                    .textSelection(.enabled)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                            .padding(12)
+                            .frame(width: 360, alignment: .leading)
+                        }
                     }
 
                     if result.isStale {
@@ -290,5 +308,16 @@ private struct ProviderRow: View {
                 }
             }
         }
+    }
+
+    private func inlineErrorDetail(for rawDetail: String) -> String {
+        if self.provider == .codex, self.result?.errorState == .authNeeded {
+            return "Run 'codex login' in terminal"
+        }
+        return rawDetail
+    }
+
+    private func fullErrorDetail(for rawDetail: String) -> String {
+        self.inlineErrorDetail(for: rawDetail)
     }
 }

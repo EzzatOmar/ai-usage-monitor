@@ -13,6 +13,7 @@ enum ProviderID: String, CaseIterable, Sendable {
 enum ProviderErrorState: Error, Sendable, Equatable {
     case authNeeded
     case tokenExpired
+    case rateLimited(String, retryAfter: TimeInterval?)
     case endpointError(String)
     case parseError(String)
     case networkError(String)
@@ -21,6 +22,7 @@ enum ProviderErrorState: Error, Sendable, Equatable {
         switch self {
         case .authNeeded: return "Auth needed"
         case .tokenExpired: return "Token expired"
+        case .rateLimited: return "Rate limited"
         case .endpointError(let message):
             let lowered = message.lowercased()
             if lowered.contains("401") || lowered.contains("403") || lowered.contains("rejected") || lowered.contains("invalid") {
@@ -38,6 +40,8 @@ enum ProviderErrorState: Error, Sendable, Equatable {
             return "Add credentials to fetch usage"
         case .tokenExpired:
             return "Token expired, refresh provider authentication"
+        case .rateLimited(let message, _):
+            return message
         case .endpointError(let message):
             return message
         case .parseError(let message):
@@ -45,6 +49,20 @@ enum ProviderErrorState: Error, Sendable, Equatable {
         case .networkError(let message):
             return message
         }
+    }
+
+    var isRateLimited: Bool {
+        if case .rateLimited = self {
+            return true
+        }
+        return false
+    }
+
+    var retryAfter: TimeInterval? {
+        if case .rateLimited(_, let retryAfter) = self {
+            return retryAfter
+        }
+        return nil
     }
 }
 

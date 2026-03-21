@@ -2,20 +2,33 @@ import Foundation
 
 protocol ProviderClient: Sendable {
     var providerID: ProviderID { get }
-    func fetchUsage(now: Date) async -> ProviderUsageResult
+    func fetchUsage(now: Date, mode: UsageRefreshMode) async -> ProviderUsageResult
+}
+
+enum UsageRefreshMode: Sendable {
+    case scheduled
+    case manual
 }
 
 actor UsageStore {
     private let clients: [any ProviderClient]
     private let pollIntervalSeconds: UInt64
+    private let retrySleep: @Sendable (UInt64) async -> Void
     private var pollTask: Task<Void, Never>?
     private var snapshot: UsageSnapshot = .empty
     private var continuations: [UUID: AsyncStream<UsageSnapshot>.Continuation] = [:]
     private var lastGood: [ProviderID: ProviderUsageResult] = [:]
 
-    init(clients: [any ProviderClient], pollIntervalSeconds: UInt64 = 60) {
+    init(
+        clients: [any ProviderClient],
+        pollIntervalSeconds: UInt64 = 60,
+        retrySleep: @escaping @Sendable (UInt64) async -> Void = { nanoseconds in
+            try? await Task.sleep(nanoseconds: nanoseconds)
+        }
+    ) {
         self.clients = clients
         self.pollIntervalSeconds = pollIntervalSeconds
+        self.retrySleep = retrySleep
     }
 
     deinit {
@@ -37,10 +50,10 @@ actor UsageStore {
     func start() {
         guard self.pollTask == nil else { return }
         self.pollTask = Task {
-            await self.refresh()
+            await self.refresh(mode: .scheduled)
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: self.pollIntervalSeconds * 1_000_000_000)
-                await self.refresh()
+                await self.refresh(mode: .scheduled)
             }
         }
     }
@@ -51,14 +64,14 @@ actor UsageStore {
     }
 
     func refreshNow() async {
-        await self.refresh()
+        await self.refresh(mode: .manual)
     }
 
     private func removeContinuation(id: UUID) {
         self.continuations.removeValue(forKey: id)
     }
 
-    private func refresh() async {
+    private func refresh(mode: UsageRefreshMode) async {
         self.snapshot.isRefreshing = true
         self.publish()
 
@@ -70,7 +83,7 @@ actor UsageStore {
             for client in self.clients {
                 guard AuthStore.isProviderEnabled(client.providerID) else { continue }
                 group.addTask {
-                    await client.fetchUsage(now: now)
+                    await self.fetchUsageWithRetry(for: client, now: now, mode: mode)
                 }
             }
             
@@ -117,5 +130,25 @@ actor UsageStore {
         for continuation in self.continuations.values {
             continuation.yield(self.snapshot)
         }
+    }
+
+    private func fetchUsageWithRetry(for client: any ProviderClient, now: Date, mode: UsageRefreshMode) async -> ProviderUsageResult {
+        let maxAttempts = mode == .scheduled ? 3 : 1
+        var attempt = 0
+        var lastResult = await client.fetchUsage(now: now, mode: mode)
+
+        while attempt + 1 < maxAttempts,
+              let errorState = lastResult.errorState,
+              errorState.isRateLimited,
+              mode == .scheduled
+        {
+            let backoffSeconds = errorState.retryAfter ?? min(pow(2.0, Double(attempt)), 8)
+            let nanoseconds = UInt64(max(0.25, backoffSeconds) * 1_000_000_000)
+            await self.retrySleep(nanoseconds)
+            attempt += 1
+            lastResult = await client.fetchUsage(now: now, mode: mode)
+        }
+
+        return lastResult
     }
 }

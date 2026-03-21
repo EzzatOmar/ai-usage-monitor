@@ -3,7 +3,7 @@ import Foundation
 struct ClaudeClient: ProviderClient {
     let providerID: ProviderID = .claude
 
-    func fetchUsage(now: Date) async -> ProviderUsageResult {
+    func fetchUsage(now: Date, mode _: UsageRefreshMode) async -> ProviderUsageResult {
         do {
             let candidates = try Self.loadCredentialCandidates()
             guard !candidates.isEmpty else {
@@ -74,7 +74,7 @@ struct ClaudeClient: ProviderClient {
         case .endpointError(let message):
             let lowered = message.lowercased()
             return lowered.contains("run 'claude'") || lowered.contains("token expired") || lowered.contains("refresh token")
-        case .authNeeded, .parseError, .networkError:
+        case .authNeeded, .parseError, .networkError, .rateLimited:
             return false
         }
     }
@@ -200,6 +200,11 @@ struct ClaudeClient: ProviderClient {
                 throw ProviderErrorState.parseError("Invalid Claude usage payload")
             }
             return decoded
+        case 429:
+            let body = String(data: data, encoding: .utf8)?
+                .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            let message = body.isEmpty ? "HTTP 429" : "HTTP 429: \(body)"
+            throw ProviderErrorState.rateLimited(message, retryAfter: http.retryAfterTimeInterval)
         case 401, 403:
             throw ProviderErrorState.tokenExpired
         default:

@@ -45,6 +45,19 @@ enum LocalPaths {
             .appendingPathComponent(".gemini")
             .appendingPathComponent("oauth_creds.json")
     }
+
+    static func opencodeAuthPaths(env: [String: String] = ProcessInfo.processInfo.environment) -> [URL] {
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        var paths: [URL] = []
+
+        if let xdgDataHome = env["XDG_DATA_HOME"]?.trimmingCharacters(in: .whitespacesAndNewlines), !xdgDataHome.isEmpty {
+            paths.append(URL(fileURLWithPath: xdgDataHome).appendingPathComponent("opencode").appendingPathComponent("auth.json"))
+        }
+
+        paths.append(home.appendingPathComponent("Library").appendingPathComponent("Application Support").appendingPathComponent("opencode").appendingPathComponent("auth.json"))
+        paths.append(home.appendingPathComponent(".local").appendingPathComponent("share").appendingPathComponent("opencode").appendingPathComponent("auth.json"))
+        return paths
+    }
 }
 
 enum JSONFile {
@@ -54,5 +67,27 @@ enum JSONFile {
             throw CocoaError(.coderInvalidValue)
         }
         return object
+    }
+}
+
+extension HTTPURLResponse {
+    var retryAfterTimeInterval: TimeInterval? {
+        for (key, value) in self.allHeaderFields {
+            guard let headerName = key as? String, headerName.lowercased() == "retry-after" else { continue }
+            if let text = value as? String {
+                let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                if let seconds = TimeInterval(trimmed) {
+                    return max(0, seconds)
+                }
+                let formatter = DateFormatter()
+                formatter.locale = Locale(identifier: "en_US_POSIX")
+                formatter.timeZone = TimeZone(secondsFromGMT: 0)
+                formatter.dateFormat = "EEE',' dd MMM yyyy HH':'mm':'ss zzz"
+                if let date = formatter.date(from: trimmed) {
+                    return max(0, date.timeIntervalSinceNow)
+                }
+            }
+        }
+        return nil
     }
 }
