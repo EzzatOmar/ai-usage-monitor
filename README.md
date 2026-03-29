@@ -10,7 +10,7 @@ A native SwiftUI macOS menu bar app that shows remaining subscription usage for 
 - Minimax
 - Z.AI
 
-Tiny footprint: ~27 MB RAM, refreshes every 60 seconds.
+Tiny footprint: ~27 MB RAM, refreshes every 5 minutes.
 
 ![Screenshot](docs/screenshot.png)
 
@@ -33,7 +33,7 @@ Download the latest `.dmg` from [Releases](../../releases/latest), open it, and 
 ## What it does
 
 - Runs as a `MenuBarExtra` app with a compact SwiftUI panel.
-- Polls every 60 seconds.
+- Polls every 5 minutes.
 - Uses direct provider APIs as the primary path (no interactive CLI scraping).
 - Shows remaining quota %, reset timing, and provider-specific error badges.
 - Reuses local auth context from `~/.codex`, and `~/.gemini` where available.

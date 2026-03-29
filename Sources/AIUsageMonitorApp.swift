@@ -15,7 +15,7 @@ struct AIUsageMonitorApp: App {
                 KimiClient(),
                 MinimaxClient(),
             ],
-            pollIntervalSeconds: 60
+            pollIntervalSeconds: 300
         )
     )
 

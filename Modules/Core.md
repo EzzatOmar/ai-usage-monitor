@@ -10,7 +10,7 @@ Thread-safe polling engine that coordinates provider clients and publishes updat
 
 ### Key Properties
 - `clients: [any ProviderClient]` - All registered provider clients
-- `pollIntervalSeconds: UInt64` - Default 60 seconds
+- `pollIntervalSeconds: UInt64` - Default 5 minutes (300 seconds)
 - `snapshot: UsageSnapshot` - Current application state
 - `lastGood: [ProviderID: ProviderUsageResult]` - Cache of last successful results
 - `continuations: [UUID: AsyncStream.Continuation]` - Active subscribers

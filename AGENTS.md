@@ -12,7 +12,7 @@ swift run AIUsageMonitor
 
 ## Project Overview
 
-Native macOS menu bar app (Swift 5.10, macOS 14+) monitoring API quota for AI providers. Polls every 60s via direct APIs, reuses local auth (~/.claude, ~/.codex, ~/.gemini). See Modules/ directory for detailed guidelines.
+Native macOS menu bar app (Swift 5.10, macOS 14+) monitoring API quota for AI providers. Polls every 5 minutes via direct APIs, reuses local auth (~/.claude, ~/.codex, ~/.gemini). See Modules/ directory for detailed guidelines.
 
 ## Module Structure
 

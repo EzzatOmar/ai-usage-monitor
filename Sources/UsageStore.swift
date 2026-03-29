@@ -21,7 +21,7 @@ actor UsageStore {
 
     init(
         clients: [any ProviderClient],
-        pollIntervalSeconds: UInt64 = 60,
+        pollIntervalSeconds: UInt64 = 300,
         retrySleep: @escaping @Sendable (UInt64) async -> Void = { nanoseconds in
             try? await Task.sleep(nanoseconds: nanoseconds)
         }
