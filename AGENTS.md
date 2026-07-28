@@ -91,6 +91,7 @@ let store = UsageStore(clients: [StubClient(...)])
 - Codex: CODEX_HOME (custom path)
 - Z.AI: ZAI_API_KEY, ZAI_KEY, ZHIPU_API_KEY, ZHIPUAI_API_KEY
 - Cerebras: CEREBRAS_API_KEY
+- Cursor: CURSOR_SESSION_TOKEN (optional override; normally discovered from local Cursor auth)
 - Access: ProcessInfo.processInfo.environment
 
 ### Provider-Specific Notes
@@ -100,6 +101,7 @@ let store = UsageStore(clients: [StubClient(...)])
 - **Z.AI**: API key stored in UserDefaults; quota from `/api/monitor/usage/quota/limit`.
 - **Cerebras**: API key auth; rate limits parsed from response headers.
 - **QwenCloud**: **Blocked for now.** Do not continue Token Plan Individual quota work until QwenCloud adds an API-key-authenticated usage endpoint. See `Modules/Providers.md` under “QwenCloudClient” for findings and restart criteria.
+- **Cursor**: Reuse the local Cursor session from read-only `state.vscdb` or Cursor Agent `auth.json`. Query undocumented dashboard usage endpoints only, never persist/log the session, and never call an inference endpoint.
 
 ### Debug (#if DEBUG)
 - Add static decodeUsageResponse() methods for testing

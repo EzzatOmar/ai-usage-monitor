@@ -10,6 +10,7 @@ A native SwiftUI macOS menu bar app that shows remaining subscription usage for 
 - Minimax
 - Z.AI
 - QwenCloud
+- Cursor
 
 Tiny footprint: ~27 MB RAM, refreshes every 5 minutes.
 
@@ -44,6 +45,8 @@ Download the latest `.dmg` from [Releases](../../releases/latest), open it, and 
 - Includes Minimax provider support via a pasted API key.
 - Includes QwenCloud Token Plan Individual API-key support via pasted `sk-sp-*` credentials, `QWEN_API_KEY`, `BAILIAN_TOKEN_PLAN_API_KEY`, or `~/.qwen/settings.json`.
 - Validates QwenCloud Individual keys with the free `/models` endpoint. QwenCloud currently exposes no API-key-authenticated endpoint for its 5-hour/7-day quota values.
+- Includes Cursor Individual usage by reusing the session already stored by the signed-in Cursor app. `CURSOR_SESSION_TOKEN` is available as a manual override.
+- Reads Cursor's dashboard usage endpoints without making model requests or requiring an Admin API key.
 
 ## Build
 
@@ -80,3 +83,6 @@ This produces `dist/AIUsageMonitor.dmg`.
 - Z.AI uses quota/usage monitor endpoints on `api.z.ai` to show usage when key auth is valid.
 - When QwenCloud shows `Auth needed`, click `Set key` to add the subscription's `sk-sp-*` key. The app can also discover `BAILIAN_TOKEN_PLAN_API_KEY` from `~/.qwen/settings.json`.
 - QwenCloud API-key validation uses only `GET /compatible-mode/v1/models` and consumes no inference credits. Since QwenCloud provides no API-key-authenticated quota endpoint, the app reports that limitation instead of making an inference request or showing fabricated quota data.
+- Cursor reads `cursorAuth/accessToken` from the local read-only `state.vscdb` used by Cursor and Cursor Nightly, with Cursor Agent `auth.json` files as fallbacks. The token is never copied into app storage or logged.
+- Cursor shows the monthly API pool as its primary window and Auto/Composer as its secondary window. It first calls `/api/dashboard/get-current-period-usage`, then falls back to `/api/usage-summary`.
+- Cursor's dashboard endpoints are undocumented and may change. A rejected or expired session is surfaced with instructions to sign into Cursor again.

@@ -104,6 +104,7 @@ HStack(alignment: .firstTextBaseline) {
         Z.AI: "Set key"
         Cerebras: "Set key"
         QwenCloud: "Set key"
+        Cursor: sign-in guidance only; authentication is reused from the Cursor app
     }
 }
 ```

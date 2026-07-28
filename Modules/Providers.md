@@ -131,3 +131,21 @@ Do not restore WebKit sign-in, scrape the console, or make a paid inference
 request to estimate quota. Revisit this provider when QwenCloud documents or
 ships a read-only API-key endpoint returning current 5-hour and 7-day usage and
 reset timestamps.
+
+### CursorClient
+
+- Supports signed-in Cursor accounts without an Admin API key.
+- `CursorSessionReader` reads `cursorAuth/accessToken` from Cursor or Cursor
+  Nightly's local `state.vscdb` in read-only mode. Cursor Agent `auth.json`
+  files and `CURSOR_SESSION_TOKEN` are fallbacks.
+- Decodes the session JWT's `sub` claim and constructs the dashboard's
+  `WorkosCursorSessionToken=<user>%3A%3A<jwt>` cookie in memory.
+- Calls the read-only
+  `POST https://cursor.com/api/dashboard/get-current-period-usage` dashboard
+  action, with `GET https://cursor.com/api/usage-summary` as a fallback.
+- Displays the monthly metered API pool as primary and Auto/Composer as
+  secondary, using the server's billing-cycle end as the reset time.
+- The token is never persisted by AI Usage Monitor, refreshed, or logged, and
+  no inference endpoint is called.
+- These dashboard endpoints are undocumented and isolated in
+  `CursorDashboardTransport` so schema or route changes can be replaced.

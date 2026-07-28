@@ -233,10 +233,16 @@ private struct ProviderRow: View {
                         }
 
                         if let secondary = result.secondaryWindow {
-                            Text("Weekly: \(Int(secondary.remainingPercent.rounded()))% left - \(RelativeTimeFormatter.resetText(secondary.resetAt))")
+                            Text("\(self.secondaryWindowLabel)\(Int(secondary.remainingPercent.rounded()))% left - \(RelativeTimeFormatter.resetText(secondary.resetAt))")
                                 .font(.caption2)
                                 .foregroundStyle(.tertiary)
                         }
+                    }
+
+                    if let accountLabel = result.accountLabel {
+                        Text(accountLabel)
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
                     }
 
                     if let errorDetail = result.errorState?.detailText {
@@ -327,12 +333,14 @@ private struct ProviderRow: View {
                         }
                         .font(.caption2)
                     }
+
                 }
 
                 if !self.isEnabled,
                    self.provider != .claude,
                    self.provider != .codex,
-                   self.provider != .gemini {
+                   self.provider != .gemini,
+                   self.provider != .cursor {
                     Button("Remove auth") {
                         self.onRemoveAuth()
                     }
@@ -360,11 +368,28 @@ private struct ProviderRow: View {
         if self.provider == .codex, self.result?.errorState == .authNeeded {
             return "Run 'codex login' in terminal"
         }
+        if self.provider == .cursor, self.result?.errorState == .authNeeded {
+            return "Sign into the Cursor app"
+        }
+        if self.provider == .cursor, self.result?.errorState == .tokenExpired {
+            return "Cursor session expired; sign into Cursor again"
+        }
         return rawDetail
     }
 
     private var primaryWindowLabel: String {
-        self.provider == .qwenCloud ? "5h: " : ""
+        switch self.provider {
+        case .qwenCloud:
+            return "5h: "
+        case .cursor:
+            return "API: "
+        default:
+            return ""
+        }
+    }
+
+    private var secondaryWindowLabel: String {
+        self.provider == .cursor ? "Auto/Composer: " : "Weekly: "
     }
 
     private func fullErrorDetail(for rawDetail: String) -> String {

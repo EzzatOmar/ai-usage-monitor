@@ -232,6 +232,180 @@ final class ProviderDecodingTests: XCTestCase {
         XCTAssertEqual(accountLabel, "Kimi Code: 15/100 requests")
     }
 
+    func test_cursorDecodeCurrentPeriodUsage() throws {
+        let data = Data(
+            """
+            {
+              "enabled": true,
+              "membershipType": "ultra",
+              "billingCycleStart": "2030-06-04T10:00:00.000Z",
+              "billingCycleEnd": "2030-07-04T10:00:00.000Z",
+              "planUsage": {
+                "autoPercentUsed": 36.7,
+                "apiPercentUsed": 12.4,
+                "totalPercentUsed": 24.2,
+                "totalSpend": 14680,
+                "limit": 40000,
+                "remaining": 25320
+              }
+            }
+            """.utf8
+        )
+
+        let (api, auto, accountLabel) = try CursorClient.decodeUsageResponse(data)
+
+        XCTAssertEqual(api?.usedPercent ?? -1, 12.4, accuracy: 0.0001)
+        XCTAssertEqual(auto?.usedPercent ?? -1, 36.7, accuracy: 0.0001)
+        XCTAssertEqual(api?.windowSeconds, 30 * 24 * 60 * 60)
+        XCTAssertEqual(api?.resetAt, auto?.resetAt)
+        XCTAssertEqual(accountLabel, "ultra")
+    }
+
+    func test_cursorDecodeUsageSummaryFallbackShape() throws {
+        let data = Data(
+            """
+            {
+              "billingCycleStart": "2030-04-02T14:11:55Z",
+              "billingCycleEnd": "2030-05-02T14:11:55Z",
+              "membershipType": "pro",
+              "isUnlimited": false,
+              "individualUsage": {
+                "plan": {
+                  "enabled": true,
+                  "used": 2000,
+                  "limit": 2000,
+                  "remaining": 0,
+                  "autoPercentUsed": -4,
+                  "apiPercentUsed": 120
+                }
+              }
+            }
+            """.utf8
+        )
+
+        let (api, auto, accountLabel) = try CursorClient.decodeUsageResponse(data)
+
+        XCTAssertEqual(api?.usedPercent, 100)
+        XCTAssertEqual(auto?.usedPercent, 0)
+        XCTAssertEqual(accountLabel, "pro")
+    }
+
+    func test_cursorDecodeFallsBackToUsedAndLimit() throws {
+        let data = Data(
+            """
+            {
+              "billingCycleEnd": 2000000000000,
+              "individualUsage": {
+                "plan": {
+                  "used": "25",
+                  "limit": 100
+                }
+              }
+            }
+            """.utf8
+        )
+
+        let (api, auto, _) = try CursorClient.decodeUsageResponse(data)
+        XCTAssertEqual(api?.usedPercent, 25)
+        XCTAssertNil(auto)
+        XCTAssertEqual(api?.resetAt?.timeIntervalSince1970, 2_000_000_000)
+    }
+
+    func test_cursorDecodeRejectsResponsesWithoutQuotaFields() {
+        let data = Data(#"{"billingCycleEnd":"2030-05-02T14:11:55Z"}"#.utf8)
+
+        XCTAssertThrowsError(try CursorClient.decodeUsageResponse(data)) { error in
+            guard case .endpointError(let message) = error as? ProviderErrorState else {
+                return XCTFail("Expected endpointError")
+            }
+            XCTAssertTrue(message.contains("no individual quota data"))
+        }
+    }
+
+    func test_cursorBuildsDashboardCookieFromLocalJWT() throws {
+        let token = self.makeJWT(payload: [
+            "sub": "github|user_01CURSOR",
+            "exp": 2_000_000_000,
+            "type": "session",
+        ])
+        let session = try CursorSessionReader.session(
+            from: token,
+            now: Date(timeIntervalSince1970: 1_900_000_000)
+        )
+
+        XCTAssertEqual(
+            session.cookieValue,
+            "user_01CURSOR%3A%3A\(token)"
+        )
+    }
+
+    func test_cursorRejectsExpiredLocalJWT() {
+        let token = self.makeJWT(payload: [
+            "sub": "user_01CURSOR",
+            "exp": 1_800_000_000,
+        ])
+
+        XCTAssertThrowsError(
+            try CursorSessionReader.session(
+                from: token,
+                now: Date(timeIntervalSince1970: 1_900_000_000)
+            )
+        ) { error in
+            XCTAssertEqual(error as? ProviderErrorState, .tokenExpired)
+        }
+    }
+
+    func test_cursorDashboardRequestsUseSessionCookieAndNoInferenceEndpoint() {
+        let session = CursorSession(cookieValue: "user_01CURSOR%3A%3Ajwt")
+        let current = CursorDashboardTransport.makeCurrentPeriodRequest(session: session)
+        let fallback = CursorDashboardTransport.makeUsageSummaryRequest(session: session)
+
+        XCTAssertEqual(
+            current.value(forHTTPHeaderField: "Cookie"),
+            "WorkosCursorSessionToken=user_01CURSOR%3A%3Ajwt"
+        )
+        XCTAssertEqual(current.httpMethod, "POST")
+        XCTAssertEqual(current.url?.host, "cursor.com")
+        XCTAssertEqual(current.url?.path, "/api/dashboard/get-current-period-usage")
+        XCTAssertEqual(current.value(forHTTPHeaderField: "Origin"), "https://cursor.com")
+        XCTAssertEqual(current.httpBody, Data("{}".utf8))
+
+        XCTAssertEqual(fallback.httpMethod, "GET")
+        XCTAssertEqual(fallback.url?.path, "/api/usage-summary")
+        XCTAssertNil(fallback.value(forHTTPHeaderField: "Origin"))
+        XCTAssertNil(fallback.httpBody)
+
+        for request in [current, fallback] {
+            XCTAssertFalse(request.url?.absoluteString.contains("chat") ?? true)
+            XCTAssertFalse(request.url?.absoluteString.contains("completion") ?? true)
+        }
+    }
+
+    func test_cursorHTTPErrorMapping() {
+        let url = URL(string: "https://cursor.com/api/usage-summary")!
+        let unauthorized = HTTPURLResponse(
+            url: url,
+            statusCode: 401,
+            httpVersion: nil,
+            headerFields: nil
+        )!
+        let throttled = HTTPURLResponse(
+            url: url,
+            statusCode: 429,
+            httpVersion: nil,
+            headerFields: ["Retry-After": "30"]
+        )!
+
+        XCTAssertEqual(
+            CursorDashboardTransport.errorState(for: unauthorized),
+            .tokenExpired
+        )
+        XCTAssertEqual(
+            CursorDashboardTransport.errorState(for: throttled),
+            .rateLimited("Cursor dashboard request rate limited", retryAfter: 30)
+        )
+    }
+
     func test_qwenCloudDecodeFiveHourAndWeeklyWindows() throws {
         let data = Data(
             """

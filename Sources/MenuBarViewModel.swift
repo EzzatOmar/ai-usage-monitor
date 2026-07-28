@@ -177,6 +177,8 @@ final class MenuBarViewModel {
         case .qwenCloud:
             AuthStore.clearQwenCloudAPIKey()
             QwenCloudAPIKeyTransport.shared.clearCachedValidation()
+        case .cursor:
+            break
         }
         self.refreshNow()
     }
