@@ -14,6 +14,7 @@ struct AIUsageMonitorApp: App {
                 CerebrasClient(),
                 KimiClient(),
                 MinimaxClient(),
+                QwenCloudClient(),
             ],
             pollIntervalSeconds: 300
         )

@@ -104,3 +104,30 @@ do {
 ### CerebrasClient
 - API key only (stored, env, or pasted)
 - Single usage endpoint
+
+### QwenCloudClient
+
+#### Blocked: Token Plan Individual quota
+
+QwenCloud Token Plan Individual monitoring is blocked until QwenCloud provides
+an API-key-authenticated usage endpoint.
+
+- `sk-sp-*` keys work with the Token Plan model endpoint and can be validated
+  without inference through `GET /compatible-mode/v1/models`.
+- The model endpoint exposes no quota fields or quota/rate-limit headers.
+- Tested `/usage`, `/quota`, dashboard usage, and personal usage candidates
+  return HTTP 404.
+- The console's internal
+  `zeldaHttp.apikeyMgr./tokenplan/personal/api/v2/usage` gateway returns
+  `ConsoleNeedLogin` when authenticated with the API key as Bearer,
+  `X-DashScope-API-Key`, `api_key`, or `sec_token`.
+- Qwen Code records token counts from inference response `usage` fields into
+  local history. It does not fetch 5-hour or 7-day subscription percentages;
+  it only recognizes quota exhaustion after receiving a provider 429.
+- Local token counts cannot reliably reconstruct Credits because consumption
+  varies by model, cache usage, thinking, and tool calls.
+
+Do not restore WebKit sign-in, scrape the console, or make a paid inference
+request to estimate quota. Revisit this provider when QwenCloud documents or
+ships a read-only API-key endpoint returning current 5-hour and 7-day usage and
+reset timestamps.

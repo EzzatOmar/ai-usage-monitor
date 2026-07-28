@@ -9,6 +9,7 @@ A native SwiftUI macOS menu bar app that shows remaining subscription usage for 
 - Kimi
 - Minimax
 - Z.AI
+- QwenCloud
 
 Tiny footprint: ~27 MB RAM, refreshes every 5 minutes.
 
@@ -41,6 +42,8 @@ Download the latest `.dmg` from [Releases](../../releases/latest), open it, and 
 - Includes Z.AI provider support via a pasted API key or env keys (`ZAI_API_KEY`, `ZAI_KEY`, `ZHIPU_API_KEY`, `ZHIPUAI_API_KEY`).
 - Includes Kimi Code provider support via a pasted API key, `KIMI_KEY`, `KIMI_API_KEY`, `KIMI_CODE_API_KEY`, or `ANTHROPIC_API_KEY` (when `ANTHROPIC_BASE_URL` points to `api.kimi.com/coding`).
 - Includes Minimax provider support via a pasted API key.
+- Includes QwenCloud Token Plan Individual API-key support via pasted `sk-sp-*` credentials, `QWEN_API_KEY`, `BAILIAN_TOKEN_PLAN_API_KEY`, or `~/.qwen/settings.json`.
+- Validates QwenCloud Individual keys with the free `/models` endpoint. QwenCloud currently exposes no API-key-authenticated endpoint for its 5-hour/7-day quota values.
 
 ## Build
 
@@ -75,3 +78,5 @@ This produces `dist/AIUsageMonitor.dmg`.
 - Claude reads auth from the native macOS keychain. Make sure you have already authenticated with Claude Code (`claude` in Terminal) before using this app.
 - When Z.AI shows `Auth needed`, click `Set key` and paste your API key.
 - Z.AI uses quota/usage monitor endpoints on `api.z.ai` to show usage when key auth is valid.
+- When QwenCloud shows `Auth needed`, click `Set key` to add the subscription's `sk-sp-*` key. The app can also discover `BAILIAN_TOKEN_PLAN_API_KEY` from `~/.qwen/settings.json`.
+- QwenCloud API-key validation uses only `GET /compatible-mode/v1/models` and consumes no inference credits. Since QwenCloud provides no API-key-authenticated quota endpoint, the app reports that limitation instead of making an inference request or showing fabricated quota data.

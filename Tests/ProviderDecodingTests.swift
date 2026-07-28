@@ -232,6 +232,109 @@ final class ProviderDecodingTests: XCTestCase {
         XCTAssertEqual(accountLabel, "Kimi Code: 15/100 requests")
     }
 
+    func test_qwenCloudDecodeFiveHourAndWeeklyWindows() throws {
+        let data = Data(
+            """
+            {
+              "successResponse": true,
+              "data": {
+                "per5HourPercentage": 0.25,
+                "per5HourResetTime": 2000000000000,
+                "per1WeekPercentage": "0.6",
+                "per1WeekResetTime": "2033-05-18T03:33:20Z"
+              }
+            }
+            """.utf8
+        )
+
+        let (primary, secondary) = try QwenCloudClient.decodeUsageResponse(data)
+
+        XCTAssertEqual(primary?.usedPercent ?? -1, 25, accuracy: 0.001)
+        XCTAssertEqual(primary?.windowSeconds, 5 * 60 * 60)
+        XCTAssertEqual(primary?.resetAt?.timeIntervalSince1970 ?? 0, 2_000_000_000, accuracy: 0.001)
+        XCTAssertEqual(secondary?.usedPercent ?? -1, 60, accuracy: 0.001)
+        XCTAssertEqual(secondary?.windowSeconds, 7 * 24 * 60 * 60)
+        XCTAssertNotNil(secondary?.resetAt)
+    }
+
+    func test_qwenCloudDecodeNestedPayloadAndClamp() throws {
+        let data = Data(
+            """
+            {
+              "data": {
+                "data": {
+                  "per5HourPercentage": 1.4,
+                  "per1WeekPercentage": -0.2
+                }
+              }
+            }
+            """.utf8
+        )
+
+        let (primary, secondary) = try QwenCloudClient.decodeUsageResponse(data)
+        XCTAssertEqual(primary?.usedPercent, 100)
+        XCTAssertEqual(secondary?.usedPercent, 0)
+    }
+
+    func test_qwenCloudDecodeMissingPlan() {
+        let data = Data(#"{"successResponse":true,"data":{}}"#.utf8)
+
+        XCTAssertThrowsError(try QwenCloudClient.decodeUsageResponse(data)) { error in
+            XCTAssertEqual(
+                error as? ProviderErrorState,
+                .endpointError("No active QwenCloud Individual Token Plan")
+            )
+        }
+    }
+
+    func test_qwenCloudMapsThrottlingEnvelope() {
+        let data = Data(
+            #"{"successResponse":false,"code":"Throttling.User","message":"Too many requests"}"#.utf8
+        )
+
+        XCTAssertThrowsError(try QwenCloudClient.decodeUsageResponse(data)) { error in
+            XCTAssertEqual(
+                error as? ProviderErrorState,
+                .rateLimited("Throttling.User: Too many requests", retryAfter: nil)
+            )
+        }
+    }
+
+    @MainActor
+    func test_qwenCloudAPIKeyValidationUsesFreeModelsEndpoint() {
+        let request = QwenCloudAPIKeyTransport.makeAPIKeyValidationRequest(apiKey: "sk-sp-test")
+
+        XCTAssertEqual(request.httpMethod, "GET")
+        XCTAssertEqual(request.url?.host, "token-plan.ap-southeast-1.maas.aliyuncs.com")
+        XCTAssertEqual(request.url?.path, "/compatible-mode/v1/models")
+        XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer sk-sp-test")
+        XCTAssertFalse(request.url?.absoluteString.contains("chat/completions") ?? true)
+        XCTAssertNil(request.httpBody)
+    }
+
+    func test_qwenCloudLoadsIndividualKeyFromQwenSettings() {
+        let data = Data(
+            """
+            {
+              "env": {
+                "BAILIAN_TOKEN_PLAN_API_KEY": "  sk-sp-individual-test  ",
+                "DASHSCOPE_API_KEY": "sk-pay-as-you-go"
+              }
+            }
+            """.utf8
+        )
+
+        XCTAssertEqual(
+            AuthStore.qwenCloudTokenPlanAPIKey(fromSettings: data),
+            "sk-sp-individual-test"
+        )
+    }
+
+    func test_qwenCloudRejectsNonIndividualKeyFromQwenSettings() {
+        let data = Data(#"{"env":{"BAILIAN_TOKEN_PLAN_API_KEY":"sk-pay-as-you-go"}}"#.utf8)
+        XCTAssertNil(AuthStore.qwenCloudTokenPlanAPIKey(fromSettings: data))
+    }
+
     func test_claudeRefreshPolicy_respectsCooldown() {
         var policy = ClaudeCLIRefreshPolicy(cooldown: 600, lastLaunchAt: nil)
         let now = Date(timeIntervalSince1970: 1_000)

@@ -19,6 +19,9 @@ final class MenuBarViewModel {
     var showKimiKeyEditor: Bool = false
     var minimaxAPIKeyInput: String = ""
     var showMinimaxKeyEditor: Bool = false
+    var qwenCloudAPIKeyInput: String = ""
+    var qwenCloudAPIKeyError: String?
+    var showQwenCloudKeyEditor: Bool = false
     var providerEnabled: [ProviderID: Bool] = [:]
 
     init(store: UsageStore) {
@@ -130,6 +133,30 @@ final class MenuBarViewModel {
         self.showMinimaxKeyEditor = false
     }
 
+    func openQwenCloudKeyEditor() {
+        self.qwenCloudAPIKeyInput = AuthStore.loadQwenCloudAPIKey() ?? ""
+        self.qwenCloudAPIKeyError = nil
+        self.showQwenCloudKeyEditor = true
+    }
+
+    func saveQwenCloudKey() {
+        let trimmed = self.qwenCloudAPIKeyInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            AuthStore.clearQwenCloudAPIKey()
+        } else if !AuthStore.saveQwenCloudAPIKey(trimmed) {
+            self.qwenCloudAPIKeyError = "Use the Token Plan Individual key beginning with sk-sp-."
+            return
+        }
+        self.qwenCloudAPIKeyError = nil
+        self.showQwenCloudKeyEditor = false
+        self.refreshNow()
+    }
+
+    func cancelQwenCloudKeyEditor() {
+        self.qwenCloudAPIKeyError = nil
+        self.showQwenCloudKeyEditor = false
+    }
+
     func clearAuth(for provider: ProviderID) {
         switch provider {
         case .claude:
@@ -147,6 +174,9 @@ final class MenuBarViewModel {
             AuthStore.clearKimiAPIKey()
         case .minimax:
             AuthStore.clearMinimaxAPIKey()
+        case .qwenCloud:
+            AuthStore.clearQwenCloudAPIKey()
+            QwenCloudAPIKeyTransport.shared.clearCachedValidation()
         }
         self.refreshNow()
     }

@@ -59,6 +59,7 @@ Persistence layer for authentication credentials using UserDefaults and Keychain
 - `aiUsageMonitor.claudeSetupToken`
 - `aiUsageMonitor.claudeUseKeychain` (Bool)
 - `aiUsageMonitor.cerebrasApiKey`
+- `aiUsageMonitor.qwenCloudApiKey`
 
 ### API Pattern
 Each credential has three methods:

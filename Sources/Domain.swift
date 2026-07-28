@@ -8,6 +8,7 @@ enum ProviderID: String, CaseIterable, Sendable {
     case cerebras = "Cerebras"
     case kimi = "Kimi"
     case minimax = "Minimax"
+    case qwenCloud = "QwenCloud"
 }
 
 enum ProviderErrorState: Error, Sendable, Equatable {

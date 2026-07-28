@@ -29,6 +29,7 @@ struct MenuBarRootView: View {
                     onCerebrasSetup: { self.model.openCerebrasKeyEditor() },
                     onKimiSetup: { self.model.openKimiKeyEditor() },
                     onMinimaxSetup: { self.model.openMinimaxKeyEditor() },
+                    onQwenCloudKeySetup: { self.model.openQwenCloudKeyEditor() },
                     onRemoveAuth: { self.model.clearAuth(for: provider) }
                 )
             }
@@ -106,6 +107,31 @@ struct MenuBarRootView: View {
                 }
             }
 
+            if self.model.showQwenCloudKeyEditor {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Set QwenCloud Individual API key")
+                        .font(.caption.weight(.semibold))
+                    Text("Paste the sk-sp-* key from your Token Plan Individual subscription.")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    Text("The key is validated with a free models request. QwenCloud does not expose 5-hour and 7-day usage through API-key authentication.")
+                        .font(.caption2)
+                        .foregroundStyle(.orange)
+                    SecureField("sk-sp-…", text: self.$model.qwenCloudAPIKeyInput)
+                        .textFieldStyle(.roundedBorder)
+                    if let error = self.model.qwenCloudAPIKeyError {
+                        Text(error)
+                            .font(.caption2)
+                            .foregroundStyle(.red)
+                    }
+                    HStack {
+                        Button("Cancel") { self.model.cancelQwenCloudKeyEditor() }
+                        Spacer()
+                        Button("Save") { self.model.saveQwenCloudKey() }
+                    }
+                }
+            }
+
             HStack {
                 Text("Updated \(RelativeTimeFormatter.lastUpdatedText(self.model.snapshot.lastUpdated))")
                     .font(.caption)
@@ -174,10 +200,11 @@ private struct ProviderRow: View {
     let onCerebrasSetup: () -> Void
     let onKimiSetup: () -> Void
     let onMinimaxSetup: () -> Void
+    let onQwenCloudKeySetup: () -> Void
     let onRemoveAuth: () -> Void
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline) {
+        HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 8) {
                     Text(self.provider.rawValue)
@@ -196,7 +223,7 @@ private struct ProviderRow: View {
                         }
                     } else {
                         if let primary = result.primaryWindow {
-                            Text("\(Int(primary.remainingPercent.rounded()))% left - \(RelativeTimeFormatter.resetText(primary.resetAt))")
+                            Text("\(self.primaryWindowLabel)\(Int(primary.remainingPercent.rounded()))% left - \(RelativeTimeFormatter.resetText(primary.resetAt))")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         } else {
@@ -293,6 +320,13 @@ private struct ProviderRow: View {
                         }
                         .font(.caption2)
                     }
+
+                    if self.provider == .qwenCloud {
+                        Button("Set key") {
+                            self.onQwenCloudKeySetup()
+                        }
+                        .font(.caption2)
+                    }
                 }
 
                 if !self.isEnabled,
@@ -300,6 +334,18 @@ private struct ProviderRow: View {
                    self.provider != .codex,
                    self.provider != .gemini {
                     Button("Remove auth") {
+                        self.onRemoveAuth()
+                    }
+                    .font(.caption2)
+                    .buttonStyle(.plain)
+                    .foregroundStyle(Color.blue.opacity(0.75))
+                }
+
+                if self.isEnabled,
+                   self.provider == .qwenCloud,
+                   self.result?.errorState == nil,
+                   self.result != nil {
+                    Button("Remove key") {
                         self.onRemoveAuth()
                     }
                     .font(.caption2)
@@ -315,6 +361,10 @@ private struct ProviderRow: View {
             return "Run 'codex login' in terminal"
         }
         return rawDetail
+    }
+
+    private var primaryWindowLabel: String {
+        self.provider == .qwenCloud ? "5h: " : ""
     }
 
     private func fullErrorDetail(for rawDetail: String) -> String {

@@ -99,6 +99,7 @@ let store = UsageStore(clients: [StubClient(...)])
 - **Gemini**: Uses `loadCodeAssist` + `retrieveUserQuota` APIs with OAuth refresh.
 - **Z.AI**: API key stored in UserDefaults; quota from `/api/monitor/usage/quota/limit`.
 - **Cerebras**: API key auth; rate limits parsed from response headers.
+- **QwenCloud**: **Blocked for now.** Do not continue Token Plan Individual quota work until QwenCloud adds an API-key-authenticated usage endpoint. See `Modules/Providers.md` under “QwenCloudClient” for findings and restart criteria.
 
 ### Debug (#if DEBUG)
 - Add static decodeUsageResponse() methods for testing

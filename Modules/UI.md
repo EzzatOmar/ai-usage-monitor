@@ -26,6 +26,7 @@ SwiftUI views for the macOS MenuBarExtra app. MVVM pattern with MenuBarViewModel
 - `claudeSetupTokenInput: String` + `showClaudeTokenEditor: Bool`
 - `zaiAPIKeyInput: String` + `showZAIKeyEditor: Bool`
 - `cerebrasAPIKeyInput: String` + `showCerebrasKeyEditor: Bool`
+- `qwenCloudAPIKeyInput: String` + `showQwenCloudKeyEditor: Bool`
 
 ### Toggles
 - `claudeKeychainEnabled: Bool` - Claude keychain opt-in
@@ -38,6 +39,7 @@ SwiftUI views for the macOS MenuBarExtra app. MVVM pattern with MenuBarViewModel
 - `enableClaudeKeychainAccess()` - Set flag, refresh
 - `openZAIKeyEditor()` / `saveZAIKey()` / `cancelZAIKeyEditor()`
 - `openCerebrasKeyEditor()` / `saveCerebrasKey()` / `cancelCerebrasKeyEditor()`
+- `openQwenCloudKeyEditor()` / `saveQwenCloudKey()` / `cancelQwenCloudKeyEditor()`
 
 ### Computed Properties
 - `menuBarTitle: String` - "AI XX%" or "AI --"
@@ -101,6 +103,7 @@ HStack(alignment: .firstTextBaseline) {
         Claude: "Paste token" + "Allow keychain" (if not enabled)
         Z.AI: "Set key"
         Cerebras: "Set key"
+        QwenCloud: "Set key"
     }
 }
 ```
@@ -165,7 +168,7 @@ VStack(alignment: .leading, spacing: 6) {
 When adding new provider:
 1. `ProviderID.allCases` iteration handles display automatically
 2. Add provider-specific action buttons in `ProviderRow`
-3. Add editor modal and input state to `MenuBarViewModel`
+3. Add editor modal/input state or a provider-specific sign-in action to `MenuBarViewModel`
 4. Add conditional editor view in `MenuBarRootView`
 5. Add action closures to `ProviderRow` initializer
 

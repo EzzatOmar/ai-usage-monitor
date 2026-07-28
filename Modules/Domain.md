@@ -8,7 +8,7 @@ Contains core domain models and types used throughout the application. All types
 ### ProviderID (enum)
 - CaseIterable enum for all supported AI providers
 - RawValue is String (provider name)
-- Cases: claude, codex, gemini, zai, cerebras
+- Cases: claude, codex, gemini, zai, cerebras, kimi, minimax, qwenCloud
 - Used for iteration in UI and lookup in results
 
 ### ProviderErrorState (enum)

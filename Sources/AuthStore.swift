@@ -8,6 +8,7 @@ enum AuthStore {
     private static let cerebrasKeyName = "aiUsageMonitor.cerebrasApiKey"
     private static let kimiKeyName = "aiUsageMonitor.kimiApiKey"
     private static let minimaxKeyName = "aiUsageMonitor.minimaxApiKey"
+    private static let qwenCloudKeyName = "aiUsageMonitor.qwenCloudApiKey"
 
     static func loadZAIAPIKey() -> String? {
         let value = self.defaults.string(forKey: self.zaiKeyName)?.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -81,6 +82,48 @@ enum AuthStore {
         self.defaults.removeObject(forKey: self.minimaxKeyName)
     }
 
+    static func loadQwenCloudAPIKey() -> String? {
+        if let stored = self.trimmedNonempty(self.defaults.string(forKey: self.qwenCloudKeyName)) {
+            return stored
+        }
+
+        let environment = ProcessInfo.processInfo.environment
+        for name in ["QWEN_API_KEY", "BAILIAN_TOKEN_PLAN_API_KEY"] {
+            if let value = self.trimmedNonempty(environment[name]), value.hasPrefix("sk-sp-") {
+                return value
+            }
+        }
+
+        let settingsURL = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".qwen")
+            .appendingPathComponent("settings.json")
+        guard let data = try? Data(contentsOf: settingsURL) else { return nil }
+        return self.qwenCloudTokenPlanAPIKey(fromSettings: data)
+    }
+
+    static func saveQwenCloudAPIKey(_ value: String) -> Bool {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.hasPrefix("sk-sp-") else { return false }
+        self.defaults.set(trimmed, forKey: self.qwenCloudKeyName)
+        return true
+    }
+
+    static func clearQwenCloudAPIKey() {
+        self.defaults.removeObject(forKey: self.qwenCloudKeyName)
+    }
+
+    static func qwenCloudTokenPlanAPIKey(fromSettings data: Data) -> String? {
+        guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let environment = root["env"] as? [String: Any],
+              let value = environment["BAILIAN_TOKEN_PLAN_API_KEY"] as? String,
+              let trimmed = self.trimmedNonempty(value),
+              trimmed.hasPrefix("sk-sp-")
+        else {
+            return nil
+        }
+        return trimmed
+    }
+
     static func clearClaudeAuth() {
         self.setClaudeKeychainEnabled(false)
         self.deleteClaudeKeychainCredentials()
@@ -135,6 +178,12 @@ enum AuthStore {
 
     private static func providerEnabledKey(for provider: ProviderID) -> String {
         "aiUsageMonitor.providerEnabled.\(provider.rawValue)"
+    }
+
+    private static func trimmedNonempty(_ value: String?) -> String? {
+        let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let trimmed, !trimmed.isEmpty else { return nil }
+        return trimmed
     }
 
     static func readClaudeKeychainCredentials() -> ClaudeKeychainCredentials? {

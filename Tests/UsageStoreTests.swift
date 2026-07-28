@@ -114,6 +114,40 @@ final class UsageStoreTests: XCTestCase {
         XCTAssertTrue(snapshot.results.first?.errorState?.isRateLimited == true)
     }
 
+    func test_qwenCloudUsesLastKnownWindowsWhenAuthenticationFails() async {
+        let now = Date()
+        let primary = UsageWindow(usedPercent: 20, resetAt: now.addingTimeInterval(3600), windowSeconds: 18_000)
+        let secondary = UsageWindow(usedPercent: 40, resetAt: now.addingTimeInterval(86_400), windowSeconds: 604_800)
+        let store = UsageStore(
+            clients: [
+                StubClient(providerID: .qwenCloud, responses: [
+                    ProviderUsageResult(
+                        provider: .qwenCloud,
+                        primaryWindow: primary,
+                        secondaryWindow: secondary,
+                        lastUpdated: now
+                    ),
+                    ProviderUsageResult(
+                        provider: .qwenCloud,
+                        lastUpdated: now.addingTimeInterval(60),
+                        errorState: .authNeeded
+                    ),
+                ]),
+            ],
+            pollIntervalSeconds: 3600
+        )
+
+        await store.refreshNow()
+        await store.refreshNow()
+        let snapshot = await firstSnapshot(from: store)
+        let result = snapshot.results.first
+
+        XCTAssertEqual(result?.primaryWindow, primary)
+        XCTAssertEqual(result?.secondaryWindow, secondary)
+        XCTAssertEqual(result?.errorState, .authNeeded)
+        XCTAssertTrue(result?.isStale == true)
+    }
+
     private func firstSnapshot(from store: UsageStore) async -> UsageSnapshot {
         let stream = await store.updates()
         for await value in stream {
