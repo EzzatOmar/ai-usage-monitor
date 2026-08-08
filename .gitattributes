@@ -1,0 +1,13 @@
+tasks/**/*.png filter=lfs diff=lfs merge=lfs -text
+tasks/**/*.jpg filter=lfs diff=lfs merge=lfs -text
+tasks/**/*.jpeg filter=lfs diff=lfs merge=lfs -text
+tasks/**/*.webp filter=lfs diff=lfs merge=lfs -text
+tasks/**/*.gif filter=lfs diff=lfs merge=lfs -text
+tasks/**/*.avif filter=lfs diff=lfs merge=lfs -text
+tasks/**/*.heic filter=lfs diff=lfs merge=lfs -text
+tasks/**/*.heif filter=lfs diff=lfs merge=lfs -text
+tasks/**/*.mp4 filter=lfs diff=lfs merge=lfs -text
+tasks/**/*.mov filter=lfs diff=lfs merge=lfs -text
+tasks/**/*.m4v filter=lfs diff=lfs merge=lfs -text
+tasks/**/*.webm filter=lfs diff=lfs merge=lfs -text
+tasks/**/*.mkv filter=lfs diff=lfs merge=lfs -text

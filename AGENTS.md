@@ -119,3 +119,24 @@ let store = UsageStore(clients: [StubClient(...)])
 - Home: FileManager.default.homeDirectoryForCurrentUser
 - Build via LocalPaths enum static methods
 - URL.appendingPathComponent() for path construction
+
+## BASED task and decision workflow
+
+Read `tasks/BASED.md` before making repository changes. If the user names a
+BASED task, read its leaf before acting and keep that leaf current as scope,
+decisions, TODOs, and verification results change. Create task leaves from
+`tasks/TEMPLATE.md`; keep detailed context out of the index.
+
+Record meaningful decisions, discoveries, blockers, scope changes, and
+verification results. Do not log routine file reads or every shell command. Do
+not mark acceptance criteria complete without evidence.
+
+Read `ledger/README.md` and search `ledger/` before making or revising a
+material architectural decision. Task logs record execution; ledger entries
+record enduring architecture. Create accepted decisions from
+`ledger/DECISION_TEMPLATE.md`, use the next permanent four-digit ID, and
+supersede old decisions instead of rewriting their rationale. Compact decisions
+only as explicit, reviewable work using `ledger/COMPACTION_TEMPLATE.md`.
+
+After changing tasks or the ledger, run
+`python3 scripts/validate_based.py`.
