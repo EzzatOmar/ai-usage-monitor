@@ -8,6 +8,15 @@ enum UpdateStatus: Sendable, Equatable {
     case downloading
     case readyToInstall
     case error(String)
+
+    var showsManualUpdateCheck: Bool {
+        switch self {
+        case .available, .downloading, .readyToInstall:
+            return false
+        case .unknown, .upToDate, .error:
+            return true
+        }
+    }
 }
 
 struct SemVer: Comparable, Sendable {

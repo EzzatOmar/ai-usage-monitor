@@ -204,6 +204,16 @@ final class MenuBarViewModel {
         return nil
     }
 
+    var showsManualUpdateCheck: Bool {
+        self.updateStatus.showsManualUpdateCheck
+    }
+
+    func checkForUpdates() {
+        Task {
+            await UpdateChecker.shared.checkForUpdate()
+        }
+    }
+
     func triggerUpdate() {
         Task {
             await UpdateChecker.shared.triggerDownloadAndInstall()

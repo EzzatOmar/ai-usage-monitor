@@ -179,6 +179,11 @@ struct MenuBarRootView: View {
                         .foregroundColor(.blue)
                 }
                 Spacer()
+                if self.model.showsManualUpdateCheck {
+                    Button("Check Updates") {
+                        self.model.checkForUpdates()
+                    }
+                }
                 Button("Quit") {
                     NSApplication.shared.terminate(nil)
                 }

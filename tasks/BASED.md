@@ -6,6 +6,8 @@
 
 ## A dditions
 
+- [x]: [A1](a/A1.md) - add manual update check action
+
 <!-- Example: - [ ]: [A1](a/A1.md) - concise addition title -->
 
 ## S ubtractions
