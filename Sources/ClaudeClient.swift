@@ -6,49 +6,50 @@ struct ClaudeClient: ProviderClient {
     static let anthropicUserAgent = "claude-cli/2.1.80"
     private static let maxRateLimitAttempts = 2
 
-    func fetchUsage(now: Date, mode _: UsageRefreshMode) async -> ProviderUsageResult {
+    func fetchUsage(now: Date, mode: UsageRefreshMode) async -> ProviderUsageResult {
         do {
-            let candidates = try Self.loadCredentialCandidates()
-            guard !candidates.isEmpty else {
-                throw ProviderErrorState.authNeeded
-            }
-
-            var keychainExpired = false
             var lastProviderError: ProviderErrorState?
 
-            for candidate in candidates {
+            let allowKeychainInteraction = mode.allowsCredentialInteraction(for: .claude)
+            if let keychainCredentials = await ClaudeCredentialSession.shared.credentials(
+                allowInteraction: allowKeychainInteraction
+            ) {
+                let candidate = Credentials(
+                    accessToken: keychainCredentials.accessToken,
+                    expiresAt: keychainCredentials.expiresAt,
+                    rateLimitTier: keychainCredentials.rateLimitTier
+                )
+
                 if let expiresAt = candidate.expiresAt, expiresAt <= Date() {
-                    if candidate.source == .keychain {
-                        keychainExpired = true
+                    await ClaudeCredentialSession.shared.clear()
+                    lastProviderError = .tokenExpired
+                } else {
+                    do {
+                        return try await Self.fetchUsageResult(candidate: candidate, now: now)
+                    } catch let error as ProviderErrorState {
+                        if error == .tokenExpired {
+                            await ClaudeCredentialSession.shared.clear()
+                        }
+                        lastProviderError = error
                     }
-                    lastProviderError = .endpointError("Token expired - run 'claude' in terminal to refresh")
+                }
+            }
+
+            for candidate in try Self.loadNonKeychainCredentialCandidates() {
+                if let expiresAt = candidate.expiresAt, expiresAt <= Date() {
+                    lastProviderError = .tokenExpired
                     continue
                 }
 
                 do {
-                    let response = try await Self.fetchUsage(accessToken: candidate.accessToken)
-                    return ProviderUsageResult(
-                        provider: .claude,
-                        primaryWindow: response.fiveHour?.asWindow,
-                        secondaryWindow: response.sevenDay?.asWindow,
-                        accountLabel: candidate.rateLimitTier,
-                        lastUpdated: now,
-                        errorState: nil,
-                        isStale: false
-                    )
+                    return try await Self.fetchUsageResult(candidate: candidate, now: now)
                 } catch let error as ProviderErrorState {
                     lastProviderError = error
-                    continue
                 }
-            }
-
-            if keychainExpired {
-                throw ProviderErrorState.endpointError("Run 'claude' in terminal to refresh token")
             }
 
             throw lastProviderError ?? ProviderErrorState.authNeeded
         } catch let error as ProviderErrorState {
-            Self.maybeTriggerBackgroundTokenRefresh(for: error)
             return ProviderUsageResult(
                 provider: .claude,
                 primaryWindow: nil,
@@ -63,36 +64,10 @@ struct ClaudeClient: ProviderClient {
         }
     }
 
-    private static func maybeTriggerBackgroundTokenRefresh(for error: ProviderErrorState) {
-        guard self.shouldTriggerAutoClaudeCLI(for: error) else { return }
-        Task.detached(priority: .utility) {
-            await ClaudeCLISessionManager.shared.triggerRefreshIfNeeded()
-        }
-    }
-
-    static func shouldTriggerAutoClaudeCLI(for error: ProviderErrorState) -> Bool {
-        switch error {
-        case .tokenExpired:
-            return true
-        case .endpointError(let message):
-            let lowered = message.lowercased()
-            return lowered.contains("run 'claude'") || lowered.contains("token expired") || lowered.contains("refresh token")
-        case .authNeeded, .parseError, .networkError, .rateLimited:
-            return false
-        }
-    }
-
-    private enum CredentialSource {
-        case keychain
-        case credentialFile
-        case environment
-    }
-
     private struct Credentials {
         let accessToken: String
         let expiresAt: Date?
         let rateLimitTier: String?
-        let source: CredentialSource
     }
 
     private struct RootCredentials: Decodable {
@@ -130,16 +105,20 @@ struct ClaudeClient: ProviderClient {
         }
     }
 
-    private static func loadCredentialCandidates() throws -> [Credentials] {
+    private static func loadNonKeychainCredentialCandidates() throws -> [Credentials] {
         var candidates: [Credentials] = []
 
-        if let keychainCreds = AuthStore.readClaudeKeychainCredentials() {
-            candidates.append(Credentials(
-                accessToken: keychainCreds.accessToken,
-                expiresAt: keychainCreds.expiresAt,
-                rateLimitTier: keychainCreds.rateLimitTier,
-                source: .keychain
-            ))
+        let environment = ProcessInfo.processInfo.environment
+        for variableName in ["CLAUDE_CODE_OAUTH_TOKEN", "CLAUDE_ACCESS_TOKEN"] {
+            if let token = environment[variableName]?.trimmingCharacters(in: .whitespacesAndNewlines),
+               !token.isEmpty
+            {
+                candidates.append(Credentials(
+                    accessToken: token,
+                    expiresAt: nil,
+                    rateLimitTier: variableName == "CLAUDE_CODE_OAUTH_TOKEN" ? "Setup token" : "Environment"
+                ))
+            }
         }
 
         for path in self.claudeCredentialPaths() {
@@ -151,26 +130,32 @@ struct ClaudeClient: ProviderClient {
                    !token.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                 {
                     let expiresAt = oauth.expiresAt.map { Date(timeIntervalSince1970: $0 / 1000.0) }
-                    candidates.append(Credentials(accessToken: token, expiresAt: expiresAt, rateLimitTier: oauth.rateLimitTier, source: .credentialFile))
+                    candidates.append(Credentials(accessToken: token, expiresAt: expiresAt, rateLimitTier: oauth.rateLimitTier))
                 }
 
                 if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                    let directToken = json["accessToken"] as? String,
                    !directToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                 {
-                    candidates.append(Credentials(accessToken: directToken, expiresAt: nil, rateLimitTier: "Claude CLI", source: .credentialFile))
+                    candidates.append(Credentials(accessToken: directToken, expiresAt: nil, rateLimitTier: "Claude CLI"))
                 }
             }
         }
 
-        if let envToken = ProcessInfo.processInfo.environment["CLAUDE_ACCESS_TOKEN"]?
-            .trimmingCharacters(in: .whitespacesAndNewlines),
-            !envToken.isEmpty
-        {
-            candidates.append(Credentials(accessToken: envToken, expiresAt: nil, rateLimitTier: "Environment", source: .environment))
-        }
-
         return candidates
+    }
+
+    private static func fetchUsageResult(candidate: Credentials, now: Date) async throws -> ProviderUsageResult {
+        let response = try await Self.fetchUsage(accessToken: candidate.accessToken)
+        return ProviderUsageResult(
+            provider: .claude,
+            primaryWindow: response.fiveHour?.asWindow,
+            secondaryWindow: response.sevenDay?.asWindow,
+            accountLabel: candidate.rateLimitTier,
+            lastUpdated: now,
+            errorState: nil,
+            isStale: false
+        )
     }
 
     private static func claudeCredentialPaths() -> [URL] {

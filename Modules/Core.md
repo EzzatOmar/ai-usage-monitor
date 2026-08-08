@@ -19,6 +19,7 @@ Thread-safe polling engine that coordinates provider clients and publishes updat
 - `init(clients:pollIntervalSeconds:)` - Initialize with clients and interval
 - `start()`, `stop()` - Control poll loop
 - `refreshNow()` - Immediate refresh from UI
+- `authorizeCredentials(for:)` - Explicit provider credential authorization from UI
 - `updates() -> AsyncStream<UsageSnapshot>` - Subscribe to state changes
 
 ### Implementation Details
@@ -78,6 +79,9 @@ static func clear<Credential>()
 - Check `isClaudeKeychainEnabled()` before reading
 - Service: "Claude Code-credentials"
 - Query with kSecClassGenericPassword and kSecReturnData
+- Scheduled and ordinary manual refreshes disable authentication UI
+- Only an explicit provider authorization refresh permits the macOS prompt
+- Approved credentials are cached in memory for the current app session
 - Parse JSON for accessToken (nested in claudeAiOauth or direct)
 
 ## Infrastructure Utilities

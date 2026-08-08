@@ -80,10 +80,14 @@ do {
 ## Provider-Specific Notes
 
 ### ClaudeClient
-- Uses OAuth token from ~/.claude, env vars, or pasted setup token
+- Uses OAuth token from `CLAUDE_CODE_OAUTH_TOKEN`, legacy `CLAUDE_ACCESS_TOKEN`,
+  credential files, or the macOS keychain
 - Keychain integration optional (user opt-in)
 - Multiple credential sources tried in sequence
-- Special handling for setup-token 401 rejection
+- Keychain authentication UI is allowed only after the explicit UI action
+- Keychain credentials are cached in memory until expiry or HTTP 401/403
+- Expired credentials require `claude auth login`; the app does not launch Claude
+  or make an inference request to force a refresh
 
 ### CodexClient
 - Token refresh logic (8-day expiry threshold)

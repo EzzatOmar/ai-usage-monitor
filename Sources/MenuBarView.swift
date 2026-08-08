@@ -292,8 +292,9 @@ private struct ProviderRow: View {
                         .background(Color.red.opacity(0.12), in: Capsule())
                         .foregroundStyle(.red)
 
-                    if self.provider == .claude, self.result?.errorState != nil, !self.claudeKeychainEnabled {
-                        Button("Allow keychain") {
+                    if self.provider == .claude,
+                       self.result?.errorState == .authNeeded || self.result?.errorState == .tokenExpired {
+                        Button(self.claudeKeychainEnabled ? "Authorize keychain" : "Allow keychain") {
                             self.onClaudeKeychainAccess()
                         }
                         .font(.caption2)
@@ -365,6 +366,12 @@ private struct ProviderRow: View {
     }
 
     private func inlineErrorDetail(for rawDetail: String) -> String {
+        if self.provider == .claude, self.result?.errorState == .authNeeded {
+            return "Authorize access to Claude Code credentials"
+        }
+        if self.provider == .claude, self.result?.errorState == .tokenExpired {
+            return "Run 'claude auth login', then authorize keychain again"
+        }
         if self.provider == .codex, self.result?.errorState == .authNeeded {
             return "Run 'codex login' in terminal"
         }

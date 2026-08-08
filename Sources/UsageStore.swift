@@ -8,6 +8,21 @@ protocol ProviderClient: Sendable {
 enum UsageRefreshMode: Sendable {
     case scheduled
     case manual
+    case credentialAuthorization(ProviderID)
+
+    func allowsCredentialInteraction(for provider: ProviderID) -> Bool {
+        if case .credentialAuthorization(let authorizedProvider) = self {
+            return authorizedProvider == provider
+        }
+        return false
+    }
+
+    var isScheduled: Bool {
+        if case .scheduled = self {
+            return true
+        }
+        return false
+    }
 }
 
 actor UsageStore {
@@ -65,6 +80,10 @@ actor UsageStore {
 
     func refreshNow() async {
         await self.refresh(mode: .manual)
+    }
+
+    func authorizeCredentials(for provider: ProviderID) async {
+        await self.refresh(mode: .credentialAuthorization(provider))
     }
 
     private func removeContinuation(id: UUID) {
@@ -133,14 +152,14 @@ actor UsageStore {
     }
 
     private func fetchUsageWithRetry(for client: any ProviderClient, now: Date, mode: UsageRefreshMode) async -> ProviderUsageResult {
-        let maxAttempts = mode == .scheduled ? 3 : 1
+        let maxAttempts = mode.isScheduled ? 3 : 1
         var attempt = 0
         var lastResult = await client.fetchUsage(now: now, mode: mode)
 
         while attempt + 1 < maxAttempts,
               let errorState = lastResult.errorState,
               errorState.isRateLimited,
-              mode == .scheduled
+              mode.isScheduled
         {
             let backoffSeconds = errorState.retryAfter ?? min(pow(2.0, Double(attempt)), 8)
             let nanoseconds = UInt64(max(0.25, backoffSeconds) * 1_000_000_000)

@@ -1,4 +1,6 @@
 import XCTest
+import LocalAuthentication
+import Security
 @testable import AIUsageMonitor
 
 final class ProviderDecodingTests: XCTestCase {
@@ -509,26 +511,74 @@ final class ProviderDecodingTests: XCTestCase {
         XCTAssertNil(AuthStore.qwenCloudTokenPlanAPIKey(fromSettings: data))
     }
 
-    func test_claudeRefreshPolicy_respectsCooldown() {
-        var policy = ClaudeCLIRefreshPolicy(cooldown: 600, lastLaunchAt: nil)
-        let now = Date(timeIntervalSince1970: 1_000)
-
-        XCTAssertTrue(policy.canLaunch(now: now))
-
-        policy.markLaunch(at: now)
-        XCTAssertFalse(policy.canLaunch(now: now.addingTimeInterval(599)))
-        XCTAssertTrue(policy.canLaunch(now: now.addingTimeInterval(600)))
+    func test_claudeKeychainInteractionRequiresExplicitAuthorizationMode() {
+        XCTAssertFalse(UsageRefreshMode.scheduled.allowsCredentialInteraction(for: .claude))
+        XCTAssertFalse(UsageRefreshMode.manual.allowsCredentialInteraction(for: .claude))
+        XCTAssertFalse(UsageRefreshMode.credentialAuthorization(.codex).allowsCredentialInteraction(for: .claude))
+        XCTAssertTrue(UsageRefreshMode.credentialAuthorization(.claude).allowsCredentialInteraction(for: .claude))
     }
 
-    func test_claudeAutoRefreshTrigger_onlyForExpirations() {
-        XCTAssertTrue(ClaudeClient.shouldTriggerAutoClaudeCLI(for: .tokenExpired))
-        XCTAssertTrue(ClaudeClient.shouldTriggerAutoClaudeCLI(for: .endpointError("Token expired - run 'claude' in terminal to refresh")))
-        XCTAssertTrue(ClaudeClient.shouldTriggerAutoClaudeCLI(for: .endpointError("Run 'claude' in terminal to refresh token")))
+    func test_claudeNoninteractiveQueryDisablesAuthenticationUI() throws {
+        let query = AuthStore.claudeKeychainQuery(allowInteraction: false)
+        let context = try XCTUnwrap(query[kSecUseAuthenticationContext as String] as? LAContext)
 
-        XCTAssertFalse(ClaudeClient.shouldTriggerAutoClaudeCLI(for: .authNeeded))
-        XCTAssertFalse(ClaudeClient.shouldTriggerAutoClaudeCLI(for: .rateLimited("HTTP 429", retryAfter: 1)))
-        XCTAssertFalse(ClaudeClient.shouldTriggerAutoClaudeCLI(for: .networkError("offline")))
-        XCTAssertFalse(ClaudeClient.shouldTriggerAutoClaudeCLI(for: .parseError("bad payload")))
+        XCTAssertTrue(context.interactionNotAllowed)
+        XCTAssertNil(AuthStore.claudeKeychainQuery(allowInteraction: true)[kSecUseAuthenticationContext as String])
+    }
+
+    func test_claudeCredentialSessionCachesApprovedCredentialUntilCleared() async {
+        let credentials = ClaudeKeychainCredentials(
+            accessToken: "access-token",
+            refreshToken: "refresh-token",
+            expiresAt: Date(timeIntervalSince1970: 2_000),
+            rateLimitTier: "Max"
+        )
+        let recorder = ClaudeKeychainReadRecorder(credentials: credentials)
+        let session = ClaudeCredentialSession { allowInteraction in
+            recorder.read(allowInteraction: allowInteraction)
+        }
+
+        let first = await session.credentials(allowInteraction: true)
+        let second = await session.credentials(allowInteraction: false)
+
+        XCTAssertEqual(first, credentials)
+        XCTAssertEqual(second, credentials)
+        XCTAssertEqual(recorder.interactionValues, [true])
+
+        await session.clear()
+        _ = await session.credentials(allowInteraction: false)
+        XCTAssertEqual(recorder.interactionValues, [true, false])
+    }
+
+    func test_claudeCredentialSessionDropsCacheWhenKeychainAccessIsDisabled() async {
+        let credentials = ClaudeKeychainCredentials(
+            accessToken: "access-token",
+            refreshToken: nil,
+            expiresAt: nil,
+            rateLimitTier: nil
+        )
+        let recorder = ClaudeKeychainReadRecorder(credentials: credentials)
+        let enabledState = ClaudeKeychainEnabledState(true)
+        let session = ClaudeCredentialSession(
+            keychainReader: { allowInteraction in
+                recorder.read(allowInteraction: allowInteraction)
+            },
+            keychainEnabledReader: {
+                enabledState.value
+            }
+        )
+
+        let initiallyCached = await session.credentials(allowInteraction: true)
+        XCTAssertEqual(initiallyCached, credentials)
+
+        enabledState.set(false)
+        let afterDisable = await session.credentials(allowInteraction: false)
+        XCTAssertNil(afterDisable)
+
+        enabledState.set(true)
+        let afterReenable = await session.credentials(allowInteraction: false)
+        XCTAssertEqual(afterReenable, credentials)
+        XCTAssertEqual(recorder.interactionValues, [true, false])
     }
 
     func test_claudeUsesClaudeCLIUserAgentForAnthropicRequests() {
@@ -578,6 +628,50 @@ final class ProviderDecodingTests: XCTestCase {
         let headerData = try! JSONSerialization.data(withJSONObject: ["alg": "none", "typ": "JWT"])
         let payloadData = try! JSONSerialization.data(withJSONObject: payload)
         return "\(headerData.base64URLEncodedString()).\(payloadData.base64URLEncodedString()).signature"
+    }
+}
+
+private final class ClaudeKeychainReadRecorder: @unchecked Sendable {
+    private let lock = NSLock()
+    private let credentials: ClaudeKeychainCredentials
+    private var values: [Bool] = []
+
+    init(credentials: ClaudeKeychainCredentials) {
+        self.credentials = credentials
+    }
+
+    var interactionValues: [Bool] {
+        self.lock.lock()
+        defer { self.lock.unlock() }
+        return self.values
+    }
+
+    func read(allowInteraction: Bool) -> ClaudeKeychainCredentials? {
+        self.lock.lock()
+        self.values.append(allowInteraction)
+        self.lock.unlock()
+        return self.credentials
+    }
+}
+
+private final class ClaudeKeychainEnabledState: @unchecked Sendable {
+    private let lock = NSLock()
+    private var storage: Bool
+
+    init(_ initialValue: Bool) {
+        self.storage = initialValue
+    }
+
+    var value: Bool {
+        self.lock.lock()
+        defer { self.lock.unlock() }
+        return self.storage
+    }
+
+    func set(_ value: Bool) {
+        self.lock.lock()
+        self.storage = value
+        self.lock.unlock()
     }
 }
 

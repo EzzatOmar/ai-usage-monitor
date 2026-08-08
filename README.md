@@ -39,7 +39,8 @@ Download the latest `.dmg` from [Releases](../../releases/latest), open it, and 
 - Uses direct provider APIs as the primary path (no interactive CLI scraping).
 - Shows remaining quota %, reset timing, and provider-specific error badges.
 - Reuses local auth context from `~/.codex`, and `~/.gemini` where available.
-- Supports Claude auth from local Claude credential files, `CLAUDE_ACCESS_TOKEN`, or a pasted setup-token.
+- Supports Claude auth from the macOS keychain, local credential files,
+  `CLAUDE_CODE_OAUTH_TOKEN`, or legacy `CLAUDE_ACCESS_TOKEN`.
 - Includes Z.AI provider support via a pasted API key or env keys (`ZAI_API_KEY`, `ZAI_KEY`, `ZHIPU_API_KEY`, `ZHIPUAI_API_KEY`).
 - Includes Kimi Code provider support via a pasted API key, `KIMI_KEY`, `KIMI_API_KEY`, `KIMI_CODE_API_KEY`, or `ANTHROPIC_API_KEY` (when `ANTHROPIC_BASE_URL` points to `api.kimi.com/coding`).
 - Includes Minimax provider support via a pasted API key.

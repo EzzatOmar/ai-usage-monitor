@@ -23,7 +23,6 @@ SwiftUI views for the macOS MenuBarExtra app. MVVM pattern with MenuBarViewModel
 - Updated via `store.updates()` stream
 
 ### Editor State (one per provider)
-- `claudeSetupTokenInput: String` + `showClaudeTokenEditor: Bool`
 - `zaiAPIKeyInput: String` + `showZAIKeyEditor: Bool`
 - `cerebrasAPIKeyInput: String` + `showCerebrasKeyEditor: Bool`
 - `qwenCloudAPIKeyInput: String` + `showQwenCloudKeyEditor: Bool`
@@ -33,10 +32,7 @@ SwiftUI views for the macOS MenuBarExtra app. MVVM pattern with MenuBarViewModel
 
 ### Actions (all @MainActor)
 - `refreshNow()` - Trigger immediate store refresh
-- `openClaudeTokenEditor()` - Load token into input field, show editor
-- `saveClaudeToken()` - Trim, save/empty, hide editor, refresh
-- `cancelClaudeTokenEditor()` - Hide editor without saving
-- `enableClaudeKeychainAccess()` - Set flag, refresh
+- `enableClaudeKeychainAccess()` - Set opt-in and explicitly authorize keychain access
 - `openZAIKeyEditor()` / `saveZAIKey()` / `cancelZAIKeyEditor()`
 - `openCerebrasKeyEditor()` / `saveCerebrasKey()` / `cancelCerebrasKeyEditor()`
 - `openQwenCloudKeyEditor()` / `saveQwenCloudKey()` / `cancelQwenCloudKeyEditor()`
@@ -57,7 +53,6 @@ VStack(alignment: .leading, spacing: 10) {
     Divider()
 
     // Conditionally shown editors
-    if showClaudeTokenEditor { ... }
     if showZAIKeyEditor { ... }
     if showCerebrasKeyEditor { ... }
 
@@ -100,7 +95,7 @@ HStack(alignment: .firstTextBaseline) {
         Badge text (Auth needed, API error, etc.)
 
         // Provider-specific action buttons
-        Claude: "Paste token" + "Allow keychain" (if not enabled)
+        Claude: "Allow keychain" or "Authorize keychain" for auth failures
         Z.AI: "Set key"
         Cerebras: "Set key"
         QwenCloud: "Set key"

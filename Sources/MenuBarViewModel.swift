@@ -50,7 +50,9 @@ final class MenuBarViewModel {
     func enableClaudeKeychainAccess() {
         AuthStore.setClaudeKeychainEnabled(true)
         self.claudeKeychainEnabled = true
-        self.refreshNow()
+        Task {
+            await self.store.authorizeCredentials(for: .claude)
+        }
     }
 
     func openZAIKeyEditor() {

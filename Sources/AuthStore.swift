@@ -1,4 +1,5 @@
 import Foundation
+import LocalAuthentication
 import Security
 
 enum AuthStore {
@@ -159,7 +160,7 @@ enum AuthStore {
     }
 
     static func readClaudeTokenFromKeychainIfEnabled() -> String? {
-        readClaudeKeychainCredentials()?.accessToken
+        readClaudeKeychainCredentials(allowInteraction: false)?.accessToken
     }
 
     private static func deleteClaudeKeychainCredentials() {
@@ -186,15 +187,10 @@ enum AuthStore {
         return trimmed
     }
 
-    static func readClaudeKeychainCredentials() -> ClaudeKeychainCredentials? {
+    static func readClaudeKeychainCredentials(allowInteraction: Bool) -> ClaudeKeychainCredentials? {
         guard self.isClaudeKeychainEnabled() else { return nil }
 
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: "Claude Code-credentials",
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne,
-        ]
+        let query = self.claudeKeychainQuery(allowInteraction: allowInteraction)
 
         var result: CFTypeRef?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
@@ -224,9 +220,24 @@ enum AuthStore {
         }
         return nil
     }
+
+    static func claudeKeychainQuery(allowInteraction: Bool) -> [String: Any] {
+        var query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: "Claude Code-credentials",
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne,
+        ]
+        if !allowInteraction {
+            let context = LAContext()
+            context.interactionNotAllowed = true
+            query[kSecUseAuthenticationContext as String] = context
+        }
+        return query
+    }
 }
 
-struct ClaudeKeychainCredentials {
+struct ClaudeKeychainCredentials: Sendable, Equatable {
     let accessToken: String
     let refreshToken: String?
     let expiresAt: Date?
