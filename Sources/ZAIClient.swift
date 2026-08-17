@@ -51,20 +51,26 @@ struct ZAIClient: ProviderClient {
     }
 
     private struct ZAIEnvelope<T: Decodable>: Decodable {
+        let code: Int?
+        let msg: String?
         let success: Bool
         let data: T?
     }
 
     private struct QuotaLimitData: Decodable {
         let limits: [QuotaLimit]
+        let level: String?
     }
 
     private struct QuotaLimit: Decodable {
         let type: String
         let usage: Double?
         let currentValue: Double?
+        let remaining: Double?
         let percentage: Double?
         let nextResetTime: Double?
+        let unit: Int?
+        let number: Int?
     }
 
     private struct ModelUsageData: Decodable {
@@ -122,9 +128,9 @@ struct ZAIClient: ProviderClient {
             throw ProviderErrorState.parseError("Invalid Z.AI quota payload")
         }
 
-        var tokenWindow: UsageWindow?
-        var requestWindow: UsageWindow?
+        var windows: [UsageWindow] = []
         for item in quotaData.limits {
+            guard item.type == "CREDIT_LIMIT" else { continue }
             let usedPercent: Double
             if let pct = item.percentage {
                 usedPercent = pct
@@ -135,15 +141,18 @@ struct ZAIClient: ProviderClient {
             }
             let resetAt = item.nextResetTime.map { Date(timeIntervalSince1970: $0 / 1000.0) }
             let window = UsageWindow(usedPercent: max(0, min(100, usedPercent)), resetAt: resetAt, windowSeconds: nil)
-            if item.type == "TOKENS_LIMIT" {
-                tokenWindow = window
-            } else if item.type == "TIME_LIMIT" {
-                requestWindow = window
-            }
+            windows.append(window)
         }
 
-        let weeklyLabel = try await Self.fetchWeeklyUsageLabel(apiKey: apiKey)
-        return QuotaResult(primary: tokenWindow ?? requestWindow, secondary: requestWindow, accountLabel: weeklyLabel)
+        var labelParts: [String] = []
+        if let level = quotaData.level, !level.isEmpty {
+            labelParts.append(level.capitalized)
+        }
+        if let weekly = try? await Self.fetchWeeklyUsageLabel(apiKey: apiKey) {
+            labelParts.append(weekly)
+        }
+        let accountLabel = labelParts.isEmpty ? nil : labelParts.joined(separator: " · ")
+        return QuotaResult(primary: windows.first, secondary: windows.count > 1 ? windows[1] : nil, accountLabel: accountLabel)
     }
 
     private static func fetchWeeklyUsageLabel(apiKey: String) async throws -> String? {
