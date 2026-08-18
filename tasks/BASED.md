@@ -2,7 +2,7 @@
 
 ## B ugs
 
-<!-- Example: - [ ]: [B1](b/B1.md) - concise bug title -->
+- [~]: [B1](b/B1.md) - fix release actor isolation build
 
 ## A dditions
 

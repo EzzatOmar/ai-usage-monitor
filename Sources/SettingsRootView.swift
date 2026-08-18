@@ -1,5 +1,6 @@
 import SwiftUI
 
+@MainActor
 struct SettingsRootView: View {
     @Bindable var model: MenuBarViewModel
 
@@ -246,6 +247,7 @@ private struct APIKeySettingsEditor: View {
     }
 }
 
+@MainActor
 private struct UpdateSettingsSection: View {
     @Bindable var model: MenuBarViewModel
 
