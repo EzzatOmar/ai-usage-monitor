@@ -2,7 +2,7 @@
 
 ## B ugs
 
-- [~]: [B1](b/B1.md) - fix release actor isolation build
+- [x]: [B1](b/B1.md) - fix release actor isolation build
 
 ## A dditions
 
