@@ -10,7 +10,7 @@
 - [x]: [A1](a/A1.md) - add manual update check action
 - [x]: [A2](a/A2.md) - add provider settings window
 - [x]: [A3](a/A3.md) - support multiple OpenAI usage accounts
-- [~]: [A4](a/A4.md) - add managed OpenAI account login
+- [x]: [A4](a/A4.md) - add managed OpenAI account login
 
 <!-- Example: - [ ]: [A1](a/A1.md) - concise addition title -->
 
