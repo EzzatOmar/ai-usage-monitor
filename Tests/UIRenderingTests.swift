@@ -35,7 +35,9 @@ final class UIRenderingTests: XCTestCase {
             lastUpdated: Date(),
             isRefreshing: false
         )
-        let renderer = ImageRenderer(content: MenuBarRootView(model: model))
+        let renderer = ImageRenderer(
+            content: MenuBarRootView(model: model, onOpenSettings: {})
+        )
         renderer.proposedSize = ProposedViewSize(width: 340, height: nil)
 
         XCTAssertEqual(model.activeProviders, [.codex])
@@ -49,12 +51,43 @@ final class UIRenderingTests: XCTestCase {
         model.providerEnabled = Dictionary(
             uniqueKeysWithValues: ProviderID.allCases.map { ($0, false) }
         )
-        let renderer = ImageRenderer(content: MenuBarRootView(model: model))
+        let renderer = ImageRenderer(
+            content: MenuBarRootView(model: model, onOpenSettings: {})
+        )
         renderer.proposedSize = ProposedViewSize(width: 340, height: nil)
 
         XCTAssertTrue(model.activeProviders.isEmpty)
         XCTAssertEqual(model.menuBarTitle, "AI --")
         XCTAssertNotNil(renderer.nsImage)
+    }
+
+    @MainActor
+    func test_settingsWindowPresenterOpensReusesAndReopensOneWindow() {
+        let model = self.makeModel()
+        let presenter = SettingsWindowPresenter(model: model)
+        defer { presenter.closeSettings() }
+
+        XCTAssertNil(presenter.settingsWindow)
+
+        presenter.showSettings()
+        let firstWindow = presenter.settingsWindow
+        let hostingController = firstWindow?.contentViewController as? NSHostingController<SettingsRootView>
+
+        XCTAssertNotNil(firstWindow)
+        XCTAssertTrue(firstWindow?.isVisible == true)
+        XCTAssertTrue(firstWindow?.canBecomeKey == true)
+        XCTAssertTrue(hostingController?.rootView.model === model)
+
+        presenter.showSettings()
+        XCTAssertTrue(firstWindow === presenter.settingsWindow)
+
+        presenter.closeSettings()
+        XCTAssertTrue(firstWindow?.isVisible == false)
+
+        presenter.showSettings()
+        XCTAssertTrue(firstWindow === presenter.settingsWindow)
+        XCTAssertTrue(firstWindow?.isVisible == true)
+        XCTAssertTrue(firstWindow?.canBecomeKey == true)
     }
 
     @MainActor

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MenuBarRootView: View {
     @Bindable var model: MenuBarViewModel
+    let onOpenSettings: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -48,7 +49,9 @@ struct MenuBarRootView: View {
                 .accessibilityLabel("Star on GitHub")
                 .help("Star on GitHub")
 
-                SettingsLink {
+                Button {
+                    self.onOpenSettings()
+                } label: {
                     Image(systemName: "gearshape")
                 }
                 .accessibilityLabel("Settings")

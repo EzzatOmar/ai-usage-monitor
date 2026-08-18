@@ -3,7 +3,8 @@
 ## Overview
 
 SwiftUI views for a macOS `MenuBarExtra` app. A shared `@MainActor`
-`MenuBarViewModel` drives the compact usage panel and native Settings scene.
+`MenuBarViewModel` drives the compact usage panel and settings content. An
+AppKit shell presents the settings window reliably from the accessory app.
 
 ## View hierarchy
 
@@ -13,21 +14,26 @@ SwiftUI views for a macOS `MenuBarExtra` app. A shared `@MainActor`
 - `ProviderSettingsRow` — provider toggle plus applicable credential action.
 - `APIKeySettingsEditor` — reusable secure inline key editor.
 - `UpdateSettingsSection` — manual update check and download/install status.
+- `SettingsWindowPresenter` — main-actor AppKit window creation, activation,
+  reuse, close, and reopen shell.
 
-`AIUsageMonitorApp` registers both scenes:
+`AIUsageMonitorApp` injects the presenter action into the menu:
 
 ```swift
 MenuBarExtra(...) {
-    MenuBarRootView(model: model)
+    MenuBarRootView(
+        model: model,
+        onOpenSettings: { settingsWindowPresenter.showSettings() }
+    )
 }
 .menuBarExtraStyle(.window)
-
-Settings {
-    SettingsRootView(model: model)
-}
 ```
 
-Both scenes must receive the same model instance.
+The presenter hosts `SettingsRootView` in one retained `NSWindow` through
+`NSHostingController`. The menu and hosted settings view must receive the same
+model instance. Do not replace this with `SettingsLink`, `openSettings`, or a
+SwiftUI `Settings` scene; those paths are unreliable for this
+`.accessory`/`LSUIElement` menu bar app. See ledger decision 0001.
 
 ## MenuBarViewModel
 
@@ -91,6 +97,8 @@ below the provider list and preserve all `UpdateStatus` states.
 - Use secondary/tertiary styles for quota metadata and orange for stale or
   caution text.
 - Give every icon-only action an accessibility label and help text.
+- Keep settings window effects in `SettingsWindowPresenter`; views invoke its
+  injected action and do not manage AppKit windows.
 
 ## Updating the UI
 
