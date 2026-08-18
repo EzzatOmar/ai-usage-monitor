@@ -16,7 +16,7 @@ struct MenuBarRootView: View {
                 }
             }
 
-            if self.model.activeProviders.isEmpty {
+            if self.model.activeUsageRows.isEmpty {
                 VStack(alignment: .leading, spacing: 3) {
                     Text("No providers enabled")
                         .font(.subheadline.weight(.semibold))
@@ -26,10 +26,11 @@ struct MenuBarRootView: View {
                 }
                 .padding(.vertical, 4)
             } else {
-                ForEach(self.model.activeProviders, id: \.self) { provider in
+                ForEach(self.model.activeUsageRows) { row in
                     ProviderRow(
-                        result: self.model.snapshot.results.first(where: { $0.provider == provider }),
-                        provider: provider
+                        result: row.result,
+                        provider: row.provider,
+                        title: row.title
                     )
                 }
             }
@@ -80,12 +81,13 @@ struct MenuBarRootView: View {
 private struct ProviderRow: View {
     let result: ProviderUsageResult?
     let provider: ProviderID
+    let title: String
     @State private var showingErrorDetails = false
 
     var body: some View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 3) {
-                Text(self.provider.rawValue)
+                Text(self.title)
                     .font(.subheadline.weight(.semibold))
 
                 if let result {
@@ -176,7 +178,10 @@ private struct ProviderRow: View {
             return "Run 'claude auth login', then authorize keychain in Settings"
         }
         if self.provider == .codex, self.result?.errorState == .authNeeded {
-            return "Run 'codex login' in terminal"
+            return "Open Settings and log in to this OpenAI account"
+        }
+        if self.provider == .codex, self.result?.errorState == .tokenExpired {
+            return "OpenAI login expired; reconnect this account in Settings"
         }
         if self.provider == .cursor, self.result?.errorState == .authNeeded {
             return "Sign into the Cursor app"

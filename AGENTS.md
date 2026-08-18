@@ -96,7 +96,7 @@ let store = UsageStore(clients: [StubClient(...)])
 
 ### Provider-Specific Notes
 - **Claude**: Keychain-only auth (opt-in). Token auto-expires; user must run `claude` CLI to refresh.
-- **Codex**: Has primary (5h) and secondary (weekly) windows from `/wham/usage` API.
+- **Codex/OpenAI**: Has primary (5h) and secondary (weekly) windows from `/wham/usage`. The first named account uses the default Codex path; additional named accounts use isolated app-managed OAuth folders. Refresh must persist rotated tokens, and permanent auth failure must require explicit re-login.
 - **Gemini**: Uses `loadCodeAssist` + `retrieveUserQuota` APIs with OAuth refresh.
 - **Z.AI**: API key stored in UserDefaults; quota from `/api/monitor/usage/quota/limit`.
 - **Cerebras**: API key auth; rate limits parsed from response headers.

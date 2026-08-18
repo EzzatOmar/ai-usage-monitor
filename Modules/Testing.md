@@ -6,8 +6,11 @@ XCTest-based tests for AIUsageMonitor. Tests use stub clients to isolate units u
 ## Test Structure
 
 ### Test File Locations
-- `Tests/UsageStoreTests.swift` - UsageStore integration tests
+- `Tests/UsageStoreTests.swift` - UsageStore and dynamic-client integration tests
 - `Tests/ProviderDecodingTests.swift` - API response decoding tests
+- `Tests/OpenAIAccountTests.swift` - named account metadata, OAuth callback/PKCE, secure auth files, rotation, and login state
+- `Tests/ProviderSelectionTests.swift` - enabled provider/account quota selection
+- `Tests/UIRenderingTests.swift` - menu, Settings, and AppKit window lifecycle rendering
 
 ### Test Pattern
 ```swift
@@ -116,10 +119,13 @@ swift test --verbose
 - Optional field handling
 - Error states on invalid payloads
 
-### Domain Tests (minimal)
-- ProviderID cases enumeration
+### Domain and OpenAI account tests
+- ProviderID and ProviderClientID selection
 - UsageWindow percentage calculations
 - ProviderErrorState badge/detail text
+- Default versus managed account path ownership and metadata validation
+- OAuth PKCE/callback handling without real credentials
+- Mode-0700 directories, mode-0600 auth files, atomic token rotation, and account mismatch rejection
 
 ## Test Data Helpers
 

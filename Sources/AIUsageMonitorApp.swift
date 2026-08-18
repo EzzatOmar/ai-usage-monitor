@@ -8,11 +8,11 @@ struct AIUsageMonitorApp: App {
     @State private var settingsWindowPresenter: SettingsWindowPresenter
 
     init() {
+        let openAIAccounts = OpenAIAccountStore.loadAccounts()
         let model = MenuBarViewModel(
             store: UsageStore(
                 clients: [
                     ClaudeClient(),
-                    CodexClient(),
                     GeminiClient(),
                     ZAIClient(),
                     CerebrasClient(),
@@ -21,8 +21,14 @@ struct AIUsageMonitorApp: App {
                     QwenCloudClient(),
                     CursorClient(),
                 ],
+                dynamicClients: {
+                    OpenAIAccountStore.loadAccounts()
+                        .filter(\.isEnabled)
+                        .map { CodexClient(account: $0) }
+                },
                 pollIntervalSeconds: 300
-            )
+            ),
+            openAIAccounts: openAIAccounts
         )
         self._model = State(initialValue: model)
         self._settingsWindowPresenter = State(

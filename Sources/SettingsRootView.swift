@@ -17,19 +17,23 @@ struct SettingsRootView: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 10) {
                     ForEach(ProviderID.allCases, id: \.self) { provider in
-                        ProviderSettingsRow(
-                            provider: provider,
-                            isEnabled: Binding(
-                                get: { self.model.isProviderEnabled(provider) },
-                                set: { self.model.setProviderEnabled(provider, $0) }
-                            ),
-                            claudeKeychainEnabled: self.model.claudeKeychainEnabled,
-                            onClaudeKeychainAccess: { self.model.enableClaudeKeychainAccess() },
-                            onSetKey: { self.openKeyEditor(for: provider) },
-                            onRemoveKey: { self.model.clearAuth(for: provider) }
-                        )
+                        if provider == .codex {
+                            OpenAIAccountsSettingsSection(model: self.model)
+                        } else {
+                            ProviderSettingsRow(
+                                provider: provider,
+                                isEnabled: Binding(
+                                    get: { self.model.isProviderEnabled(provider) },
+                                    set: { self.model.setProviderEnabled(provider, $0) }
+                                ),
+                                claudeKeychainEnabled: self.model.claudeKeychainEnabled,
+                                onClaudeKeychainAccess: { self.model.enableClaudeKeychainAccess() },
+                                onSetKey: { self.openKeyEditor(for: provider) },
+                                onRemoveKey: { self.model.clearAuth(for: provider) }
+                            )
 
-                        self.keyEditor(for: provider)
+                            self.keyEditor(for: provider)
+                        }
 
                         if provider != ProviderID.allCases.last {
                             Divider()
@@ -117,6 +121,145 @@ struct SettingsRootView: View {
             )
         default:
             EmptyView()
+        }
+    }
+}
+
+@MainActor
+private struct OpenAIAccountsSettingsSection: View {
+    @Bindable var model: MenuBarViewModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("OpenAI accounts")
+                    .font(.subheadline.weight(.semibold))
+                Text("The first account uses your default Codex login. Additional accounts are stored separately by AI Usage Monitor.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+
+            ForEach(self.model.openAIAccounts) { account in
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 6) {
+                        Toggle("", isOn: Binding(
+                            get: {
+                                self.model.openAIAccounts.first(where: { $0.id == account.id })?.isEnabled ?? false
+                            },
+                            set: { self.model.setOpenAIAccountEnabled(id: account.id, enabled: $0) }
+                        ))
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                        .controlSize(.small)
+
+                        TextField(
+                            "Account name",
+                            text: Binding(
+                                get: { self.model.openAIAccountNameInputs[account.id] ?? account.name },
+                                set: { self.model.openAIAccountNameInputs[account.id] = $0 }
+                            )
+                        )
+                        .textFieldStyle(.roundedBorder)
+
+                        Button("Save") {
+                            self.model.saveOpenAIAccountName(id: account.id)
+                        }
+                        .controlSize(.small)
+
+                        Button(self.loginButtonTitle(for: account)) {
+                            if self.model.openAIAccountLoginStates[account.id] == .authorizing {
+                                self.model.cancelOpenAIAccountLogin(id: account.id)
+                            } else {
+                                self.model.loginOpenAIAccount(id: account.id)
+                            }
+                        }
+                        .controlSize(.small)
+
+                        if !account.isDefault {
+                            Button(role: .destructive) {
+                                self.model.removeOpenAIAccount(id: account.id)
+                            } label: {
+                                Image(systemName: "trash")
+                            }
+                            .controlSize(.small)
+                            .accessibilityLabel("Remove \(account.name)")
+                            .help("Remove account and its saved login")
+                        }
+                    }
+
+                    HStack(spacing: 6) {
+                        Text(account.isDefault ? "Default Codex path" : "Managed auth folder")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                        self.loginStatus(for: account)
+                    }
+                }
+                .padding(8)
+                .background(.quaternary.opacity(0.25), in: RoundedRectangle(cornerRadius: 7))
+            }
+
+            HStack(spacing: 6) {
+                TextField("New account name", text: self.$model.newOpenAIAccountName)
+                    .textFieldStyle(.roundedBorder)
+                Button("Add account") {
+                    self.model.addOpenAIAccount()
+                }
+                .controlSize(.small)
+            }
+
+            if let error = self.model.openAIAccountError {
+                Text(error)
+                    .font(.caption2)
+                    .foregroundStyle(.red)
+            }
+        }
+    }
+
+    private func loginButtonTitle(for account: OpenAIAccountProfile) -> String {
+        if self.model.openAIAccountLoginStates[account.id] == .authorizing {
+            return "Cancel"
+        }
+        if !self.model.isOpenAIAccountAuthenticated(account) {
+            return "Login"
+        }
+        if let error = self.model.openAIAccountResult(for: account.id)?.errorState,
+           error == .authNeeded || error == .tokenExpired {
+            return "Login again"
+        }
+        return "Reconnect"
+    }
+
+    @ViewBuilder
+    private func loginStatus(for account: OpenAIAccountProfile) -> some View {
+        switch self.model.openAIAccountLoginStates[account.id] ?? .idle {
+        case .authorizing:
+            HStack(spacing: 4) {
+                ProgressView()
+                    .controlSize(.mini)
+                Text("Waiting for browser login…")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        case .failed(let message):
+            Text(message)
+                .font(.caption2)
+                .foregroundStyle(.red)
+                .lineLimit(2)
+        case .idle:
+            if let error = self.model.openAIAccountResult(for: account.id)?.errorState,
+               error == .authNeeded || error == .tokenExpired {
+                Text("Login required")
+                    .font(.caption2)
+                    .foregroundStyle(.orange)
+            } else if self.model.isOpenAIAccountAuthenticated(account) {
+                Text("Connected")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            } else {
+                Text("Not connected")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 }

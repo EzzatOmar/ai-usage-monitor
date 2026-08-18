@@ -2,7 +2,14 @@ import Foundation
 
 protocol ProviderClient: Sendable {
     var providerID: ProviderID { get }
+    var clientID: ProviderClientID { get }
     func fetchUsage(now: Date, mode: UsageRefreshMode) async -> ProviderUsageResult
+}
+
+extension ProviderClient {
+    var clientID: ProviderClientID {
+        ProviderClientID(provider: self.providerID)
+    }
 }
 
 enum UsageRefreshMode: Sendable {
@@ -27,21 +34,24 @@ enum UsageRefreshMode: Sendable {
 
 actor UsageStore {
     private let clients: [any ProviderClient]
+    private let dynamicClients: @Sendable () -> [any ProviderClient]
     private let pollIntervalSeconds: UInt64
     private let retrySleep: @Sendable (UInt64) async -> Void
     private var pollTask: Task<Void, Never>?
     private var snapshot: UsageSnapshot = .empty
     private var continuations: [UUID: AsyncStream<UsageSnapshot>.Continuation] = [:]
-    private var lastGood: [ProviderID: ProviderUsageResult] = [:]
+    private var lastGood: [ProviderClientID: ProviderUsageResult] = [:]
 
     init(
         clients: [any ProviderClient],
+        dynamicClients: @escaping @Sendable () -> [any ProviderClient] = { [] },
         pollIntervalSeconds: UInt64 = 300,
         retrySleep: @escaping @Sendable (UInt64) async -> Void = { nanoseconds in
             try? await Task.sleep(nanoseconds: nanoseconds)
         }
     ) {
         self.clients = clients
+        self.dynamicClients = dynamicClients
         self.pollIntervalSeconds = pollIntervalSeconds
         self.retrySleep = retrySleep
     }
@@ -95,12 +105,25 @@ actor UsageStore {
         self.publish()
 
         let now = Date()
-        // Start with existing results to preserve order/stale data while refreshing
-        var currentResults = self.snapshot.results
+        let availableClients = self.clients + self.dynamicClients()
+        let activeClients = availableClients.filter { client in
+            client.providerID == .codex || AuthStore.isProviderEnabled(client.providerID)
+        }
+        let activeCodexIDs = Set(
+            activeClients
+                .filter { $0.providerID == .codex }
+                .map(\.clientID)
+        )
+        self.lastGood = self.lastGood.filter {
+            $0.key.provider != .codex || activeCodexIDs.contains($0.key)
+        }
+        // Start with existing results to preserve order/stale data while refreshing.
+        var currentResults = self.snapshot.results.filter {
+            $0.provider != .codex || activeCodexIDs.contains($0.id)
+        }
 
         await withTaskGroup(of: ProviderUsageResult.self) { group in
-            for client in self.clients {
-                guard AuthStore.isProviderEnabled(client.providerID) else { continue }
+            for client in activeClients {
                 group.addTask {
                     await self.fetchUsageWithRetry(for: client, now: now, mode: mode)
                 }
@@ -111,11 +134,12 @@ actor UsageStore {
                 let finalResult: ProviderUsageResult
                 
                 if result.errorState == nil {
-                    self.lastGood[result.provider] = result
+                    self.lastGood[result.id] = result
                     finalResult = result
-                } else if let cached = self.lastGood[result.provider] {
+                } else if let cached = self.lastGood[result.id] {
                     finalResult = ProviderUsageResult(
                         provider: cached.provider,
+                        accountID: cached.accountID,
                         primaryWindow: cached.primaryWindow,
                         secondaryWindow: cached.secondaryWindow,
                         modelWindows: cached.modelWindows,
@@ -129,7 +153,7 @@ actor UsageStore {
                 }
                 
                 // Update the local results list
-                if let index = currentResults.firstIndex(where: { $0.provider == finalResult.provider }) {
+                if let index = currentResults.firstIndex(where: { $0.id == finalResult.id }) {
                     currentResults[index] = finalResult
                 } else {
                     currentResults.append(finalResult)

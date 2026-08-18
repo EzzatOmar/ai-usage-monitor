@@ -42,6 +42,32 @@ final class ProviderSelectionTests: XCTestCase {
         )
     }
 
+    func test_minimumRemainingPercentUsesEnabledOpenAIAccountIdentity() {
+        let now = Date()
+        let results = [
+            ProviderUsageResult(
+                provider: .codex,
+                accountID: "personal",
+                primaryWindow: UsageWindow(usedPercent: 90, resetAt: nil, windowSeconds: nil),
+                lastUpdated: now
+            ),
+            ProviderUsageResult(
+                provider: .codex,
+                accountID: "work",
+                primaryWindow: UsageWindow(usedPercent: 25, resetAt: nil, windowSeconds: nil),
+                lastUpdated: now
+            ),
+        ]
+
+        XCTAssertEqual(
+            ProviderSelection.minimumRemainingPercent(
+                results: results,
+                activeClientIDs: [ProviderClientID(provider: .codex, accountID: "work")]
+            ),
+            75
+        )
+    }
+
     func test_minimumRemainingPercentIsNilWhenNoActiveProviderHasQuota() {
         let now = Date()
         let results = [

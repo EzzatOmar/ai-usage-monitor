@@ -12,6 +12,16 @@ enum ProviderID: String, CaseIterable, Sendable {
     case cursor = "Cursor"
 }
 
+struct ProviderClientID: Hashable, Sendable {
+    let provider: ProviderID
+    let accountID: String?
+
+    init(provider: ProviderID, accountID: String? = nil) {
+        self.provider = provider
+        self.accountID = accountID
+    }
+}
+
 enum ProviderErrorState: Error, Sendable, Equatable {
     case authNeeded
     case tokenExpired
@@ -83,8 +93,9 @@ struct ModelUsageWindow: Sendable, Equatable {
     let window: UsageWindow
 }
 
-struct ProviderUsageResult: Sendable, Equatable {
+struct ProviderUsageResult: Sendable, Equatable, Identifiable {
     let provider: ProviderID
+    let accountID: String?
     let primaryWindow: UsageWindow?
     let secondaryWindow: UsageWindow?
     let modelWindows: [ModelUsageWindow]
@@ -95,6 +106,7 @@ struct ProviderUsageResult: Sendable, Equatable {
 
     init(
         provider: ProviderID,
+        accountID: String? = nil,
         primaryWindow: UsageWindow? = nil,
         secondaryWindow: UsageWindow? = nil,
         modelWindows: [ModelUsageWindow] = [],
@@ -104,6 +116,7 @@ struct ProviderUsageResult: Sendable, Equatable {
         isStale: Bool = false
     ) {
         self.provider = provider
+        self.accountID = accountID
         self.primaryWindow = primaryWindow
         self.secondaryWindow = secondaryWindow
         self.modelWindows = modelWindows
@@ -111,6 +124,10 @@ struct ProviderUsageResult: Sendable, Equatable {
         self.lastUpdated = lastUpdated
         self.errorState = errorState
         self.isStale = isStale
+    }
+
+    var id: ProviderClientID {
+        ProviderClientID(provider: self.provider, accountID: self.accountID)
     }
 }
 
@@ -139,6 +156,16 @@ enum ProviderSelection {
         let activeProviders = Set(self.activeProviders(providerEnabled: providerEnabled))
         return results
             .filter { activeProviders.contains($0.provider) }
+            .compactMap { $0.primaryWindow?.remainingPercent }
+            .min()
+    }
+
+    static func minimumRemainingPercent(
+        results: [ProviderUsageResult],
+        activeClientIDs: Set<ProviderClientID>
+    ) -> Double? {
+        results
+            .filter { activeClientIDs.contains($0.id) }
             .compactMap { $0.primaryWindow?.remainingPercent }
             .min()
     }

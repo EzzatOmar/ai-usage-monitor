@@ -12,6 +12,10 @@ private struct StubClient: ProviderClient {
         self.onFetch = onFetch
     }
 
+    var clientID: ProviderClientID {
+        self.responses.first?.id ?? ProviderClientID(provider: self.providerID)
+    }
+
     func fetchUsage(now: Date, mode _: UsageRefreshMode) async -> ProviderUsageResult {
         self.onFetch?()
         if self.responses.count <= 1 {
@@ -114,6 +118,43 @@ final class UsageStoreTests: XCTestCase {
         XCTAssertTrue(snapshot.results.first?.errorState?.isRateLimited == true)
     }
 
+    func test_dynamicOpenAIClientsPublishAndPruneIndependentAccountResults() async {
+        let now = Date()
+        let personal = StubClient(
+            providerID: .codex,
+            responses: [ProviderUsageResult(
+                provider: .codex,
+                accountID: "personal",
+                primaryWindow: UsageWindow(usedPercent: 10, resetAt: nil, windowSeconds: 18_000),
+                lastUpdated: now
+            )]
+        )
+        let work = StubClient(
+            providerID: .codex,
+            responses: [ProviderUsageResult(
+                provider: .codex,
+                accountID: "work",
+                primaryWindow: UsageWindow(usedPercent: 20, resetAt: nil, windowSeconds: 18_000),
+                lastUpdated: now
+            )]
+        )
+        let holder = DynamicClientHolder([personal, work])
+        let store = UsageStore(
+            clients: [],
+            dynamicClients: { holder.clients },
+            pollIntervalSeconds: 3_600
+        )
+
+        await store.refreshNow()
+        var snapshot = await firstSnapshot(from: store)
+        XCTAssertEqual(Set(snapshot.results.map(\.accountID)), Set(["personal", "work"]))
+
+        holder.clients = [work]
+        await store.refreshNow()
+        snapshot = await firstSnapshot(from: store)
+        XCTAssertEqual(snapshot.results.map(\.accountID), ["work"])
+    }
+
     func test_qwenCloudUsesLastKnownWindowsWhenAuthenticationFails() async {
         let now = Date()
         let primary = UsageWindow(usedPercent: 20, resetAt: now.addingTimeInterval(3600), windowSeconds: 18_000)
@@ -156,6 +197,28 @@ final class UsageStoreTests: XCTestCase {
             }
         }
         return .empty
+    }
+}
+
+private final class DynamicClientHolder: @unchecked Sendable {
+    private let lock = NSLock()
+    private var storage: [any ProviderClient]
+
+    init(_ clients: [any ProviderClient]) {
+        self.storage = clients
+    }
+
+    var clients: [any ProviderClient] {
+        get {
+            self.lock.lock()
+            defer { self.lock.unlock() }
+            return self.storage
+        }
+        set {
+            self.lock.lock()
+            self.storage = newValue
+            self.lock.unlock()
+        }
     }
 }
 

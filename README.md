@@ -39,7 +39,8 @@ Download the latest `.dmg` from [Releases](../../releases/latest), open it, and 
 - Polls every 5 minutes.
 - Uses direct provider APIs as the primary path (no interactive CLI scraping).
 - Shows remaining quota %, reset timing, and provider-specific error badges.
-- Reuses local auth context from `~/.codex`, and `~/.gemini` where available.
+- Reuses the default OpenAI/Codex auth context from `$CODEX_HOME` or `~/.codex`, and local Gemini auth where available.
+- Supports multiple named OpenAI accounts; additional browser logins are isolated in app-managed auth folders.
 - Supports Claude auth from the macOS keychain, local credential files,
   `CLAUDE_CODE_OAUTH_TOKEN`, or legacy `CLAUDE_ACCESS_TOKEN`.
 - Includes Z.AI provider support via a pasted API key or env keys (`ZAI_API_KEY`, `ZAI_KEY`, `ZHIPU_API_KEY`, `ZHIPUAI_API_KEY`).
@@ -81,6 +82,8 @@ This produces `dist/AIUsageMonitor.dmg`.
 - Endpoints used are not all public/stable and may evolve.
 - When local credentials are missing or expired, the app reports `Auth needed` or `Token expired` without launching intrusive auth flows.
 - Claude reads auth from the native macOS keychain. Make sure you have already authenticated with Claude Code (`claude` in Terminal) before using this app.
+- The first OpenAI account uses the normal Codex auth path. Add and name more OpenAI accounts in Settings, then click Login for each one.
+- Additional OpenAI OAuth files live under `~/Library/Application Support/AIUsageMonitor/OpenAIAccounts/`; refresh is automatic, while invalidated credentials require an explicit Login again.
 - When Z.AI shows `Auth needed`, open Settings, click `Set key`, and paste your API key.
 - Z.AI uses quota/usage monitor endpoints on `api.z.ai` to show usage when key auth is valid.
 - When QwenCloud shows `Auth needed`, open Settings and click `Set key` to add the subscription's `sk-sp-*` key. The app can also discover `BAILIAN_TOKEN_PLAN_API_KEY` from `~/.qwen/settings.json`.

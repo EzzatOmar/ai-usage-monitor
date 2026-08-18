@@ -10,22 +10,24 @@ enum Redaction {
 }
 
 enum LocalPaths {
-    static func codexAuthPath(env: [String: String] = ProcessInfo.processInfo.environment) -> URL {
-        if let home = env["CODEX_HOME"], !home.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            return URL(fileURLWithPath: home).appendingPathComponent("auth.json")
+    static func codexHomeURL(
+        env: [String: String] = ProcessInfo.processInfo.environment,
+        fileManager: FileManager = .default
+    ) -> URL {
+        if let home = env["CODEX_HOME"]?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !home.isEmpty {
+            return URL(fileURLWithPath: home, isDirectory: true)
         }
-        return FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".codex")
-            .appendingPathComponent("auth.json")
+        return fileManager.homeDirectoryForCurrentUser
+            .appendingPathComponent(".codex", isDirectory: true)
+    }
+
+    static func codexAuthPath(env: [String: String] = ProcessInfo.processInfo.environment) -> URL {
+        self.codexHomeURL(env: env).appendingPathComponent("auth.json")
     }
 
     static func codexConfigPath(env: [String: String] = ProcessInfo.processInfo.environment) -> URL {
-        if let home = env["CODEX_HOME"], !home.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            return URL(fileURLWithPath: home).appendingPathComponent("config.toml")
-        }
-        return FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".codex")
-            .appendingPathComponent("config.toml")
+        self.codexHomeURL(env: env).appendingPathComponent("config.toml")
     }
 
     static func claudeCredentialsPath() -> URL {
@@ -46,18 +48,6 @@ enum LocalPaths {
             .appendingPathComponent("oauth_creds.json")
     }
 
-    static func opencodeAuthPaths(env: [String: String] = ProcessInfo.processInfo.environment) -> [URL] {
-        let home = FileManager.default.homeDirectoryForCurrentUser
-        var paths: [URL] = []
-
-        if let xdgDataHome = env["XDG_DATA_HOME"]?.trimmingCharacters(in: .whitespacesAndNewlines), !xdgDataHome.isEmpty {
-            paths.append(URL(fileURLWithPath: xdgDataHome).appendingPathComponent("opencode").appendingPathComponent("auth.json"))
-        }
-
-        paths.append(home.appendingPathComponent("Library").appendingPathComponent("Application Support").appendingPathComponent("opencode").appendingPathComponent("auth.json"))
-        paths.append(home.appendingPathComponent(".local").appendingPathComponent("share").appendingPathComponent("opencode").appendingPathComponent("auth.json"))
-        return paths
-    }
 }
 
 enum JSONFile {
@@ -67,6 +57,25 @@ enum JSONFile {
             throw CocoaError(.coderInvalidValue)
         }
         return object
+    }
+}
+
+extension Data {
+    init?(base64URLEncoded value: String) {
+        var base64 = value.replacingOccurrences(of: "-", with: "+")
+            .replacingOccurrences(of: "_", with: "/")
+        let remainder = base64.count % 4
+        if remainder != 0 {
+            base64 += String(repeating: "=", count: 4 - remainder)
+        }
+        self.init(base64Encoded: base64)
+    }
+
+    func base64URLEncodedString() -> String {
+        self.base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
     }
 }
 

@@ -90,10 +90,13 @@ do {
   or make an inference request to force a refresh
 
 ### CodexClient
-- Token refresh logic (8-day expiry threshold)
-- Reads ~/.codex/auth.json and config.toml
-- Custom base URL support via config
-- Plan type, primary擔primary/secondary windows
+- One client per enabled `OpenAIAccountProfile`; results carry the profile ID
+- The fixed default profile reads `$CODEX_HOME` or `~/.codex/auth.json` and `config.toml`
+- Additional profiles read isolated Codex-compatible auth files managed by AI Usage Monitor
+- OAuth access tokens refresh near JWT expiry, retry once after usage 401/403, and persist rotated credentials atomically
+- Permanent refresh rejection or account mismatch returns `tokenExpired`; only an explicit Settings action starts browser login
+- API-key auth remains readable for default-path compatibility, but managed account login is OAuth-only
+- Supports custom base URL config per account directory and returns plan type plus primary/secondary windows
 
 ### ZAIClient
 - Multiple env var names supported

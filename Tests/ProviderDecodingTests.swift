@@ -585,43 +585,12 @@ final class ProviderDecodingTests: XCTestCase {
         XCTAssertEqual(ClaudeClient.anthropicUserAgent, "claude-cli/2.1.80")
     }
 
-    func test_codexDecodeOpenCodeCredentials_extractsAccountIDFromJWT() throws {
-        let token = makeJWT(payload: [
-            "chatgpt_account_id": "acct_123"
-        ])
-        let data = Data(
-            """
-            {
-              "openai": {
-                "type": "oauth",
-                "refresh": "refresh-token",
-                "access": "\(token)",
-                "expires": 1742561234567
-              }
-            }
-            """.utf8
-        )
-
-        let credentials = try XCTUnwrap(CodexClient.decodeOpenCodeCredentials(data))
-        XCTAssertEqual(credentials.access, token)
-        XCTAssertEqual(credentials.refresh, "refresh-token")
-        XCTAssertEqual(credentials.accountID, "acct_123")
-        XCTAssertNotNil(credentials.expiresAt)
-    }
-
     func test_codexExtractAccountIDFromOrganizationClaim() {
         let token = makeJWT(payload: [
             "organizations": [["id": "org_456"]]
         ])
 
         XCTAssertEqual(CodexClient.extractAccountIDForTests(token), "org_456")
-    }
-
-    func test_codexFallbackPolicy_advancesToOpenCodeForStalePrimaryAuth() {
-        XCTAssertTrue(CodexClient.shouldTryNextCredentialForTests(.endpointError("Codex auth is stale (refresh token reused). Run 'codex login' and then refresh.")))
-        XCTAssertTrue(CodexClient.shouldTryNextCredentialForTests(.tokenExpired))
-        XCTAssertTrue(CodexClient.shouldTryNextCredentialForTests(.endpointError("Unauthorized: invalid_api_key")))
-        XCTAssertFalse(CodexClient.shouldTryNextCredentialForTests(.rateLimited("HTTP 429", retryAfter: 1)))
     }
 
     private func makeJWT(payload: [String: Any]) -> String {

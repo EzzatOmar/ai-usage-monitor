@@ -13,6 +13,7 @@ AppKit shell presents the settings window reliably from the accessory app.
 - `SettingsRootView` — all provider activation, credentials, and update actions.
 - `ProviderSettingsRow` — provider toggle plus applicable credential action.
 - `APIKeySettingsEditor` — reusable secure inline key editor.
+- `OpenAIAccountsSettingsSection` — named OpenAI account toggles, login/re-login, and removal.
 - `UpdateSettingsSection` — manual update check and download/install status.
 - `SettingsWindowPresenter` — main-actor AppKit window creation, activation,
   reuse, close, and reopen shell.
@@ -81,11 +82,13 @@ Each row has a persisted toggle. Configuration controls are provider-specific:
 
 - Claude — explicit keychain authorization.
 - Z.AI, Cerebras, Kimi, Minimax, QwenCloud — set/remove API key and secure editor.
-- Codex, Gemini, Cursor — local-login/session description; no key editor.
+- OpenAI/Codex — one default-path account plus named app-managed accounts with browser login/re-login.
+- Gemini, Cursor — local-login/session description; no key editor.
 
 Keep API inputs in `SecureField`, trim on save through view-model actions, and
-show the existing QwenCloud validation error inline. Update controls belong
-below the provider list and preserve all `UpdateStatus` states.
+show the existing QwenCloud validation error inline. OpenAI account names use
+ordinary text fields; OAuth secrets never enter SwiftUI state. Update controls
+belong below the provider list and preserve all `UpdateStatus` states.
 
 ## SwiftUI conventions
 

@@ -11,6 +11,11 @@ Contains core domain models and types used throughout the application. All types
 - Cases: claude, codex, gemini, zai, cerebras, kimi, minimax, qwenCloud, cursor
 - Used for iteration in UI and lookup in results
 
+### ProviderClientID (struct)
+- Stable result/client identity composed of `ProviderID` plus optional account ID
+- OpenAI/Codex rows use the account profile ID; all other providers use nil
+- Used by `UsageStore` results, stale cache, menu rows, and quota selection
+
 ### ProviderErrorState (enum)
 - Error states for provider operations
 - Cases: authNeeded, tokenExpired, endpointError(String), parseError(String), networkError(String)
@@ -25,7 +30,8 @@ Contains core domain models and types used throughout the application. All types
 
 ### ProviderUsageResult (struct)
 - Result of a fetchUsage() call from a provider client
-- Properties: provider, primaryWindow, secondaryWindow, accountLabel, lastUpdated, errorState, isStale
+- Properties: provider, optional accountID, primaryWindow, secondaryWindow, accountLabel, lastUpdated, errorState, isStale
+- Computed `id` returns `ProviderClientID`
 - Equatable, Sendable
 - Never thrown; always returned
 

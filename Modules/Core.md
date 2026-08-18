@@ -9,10 +9,11 @@ Core application logic including state management, polling, and persistence. Mai
 Thread-safe polling engine that coordinates provider clients and publishes updates.
 
 ### Key Properties
-- `clients: [any ProviderClient]` - All registered provider clients
+- `clients: [any ProviderClient]` - Static single-account provider clients
+- `dynamicClients` - Reloads enabled named OpenAI account clients each refresh
 - `pollIntervalSeconds: UInt64` - Default 5 minutes (300 seconds)
 - `snapshot: UsageSnapshot` - Current application state
-- `lastGood: [ProviderID: ProviderUsageResult]` - Cache of last successful results
+- `lastGood: [ProviderClientID: ProviderUsageResult]` - Per-provider/account cache of last successful results
 - `continuations: [UUID: AsyncStream.Continuation]` - Active subscribers
 
 ### Public API
@@ -42,13 +43,28 @@ await withTaskGroup(of: ProviderUsageResult.self) { group in
 ```
 
 #### Stale Result Handling
-- If fetch succeeds: update `lastGood[provider]` and mark `isStale = false`
-- If fetch fails: use `lastGood[provider]` with `isStale = true` and new errorState
+- If fetch succeeds: update `lastGood[result.id]` and mark `isStale = false`
+- If fetch fails: use `lastGood[result.id]` with `isStale = true` and new errorState
 - Falls back to current result if no cached
 
 #### Publishing
 - Updates continuations for all subscribers
 - Calls `continuation.yield(snapshot)` on each state change
+
+## OpenAI account persistence
+
+### OpenAIAccountStore
+
+- Persists account ID, display name, enabled state, and storage kind only.
+- Always returns one fixed, non-removable default account using the normal Codex path.
+- Derives additional auth directories from validated UUIDs under Application Support.
+- Never stores OAuth credentials in UserDefaults.
+
+### OpenAIAuthFileStore
+
+- Reads Codex-compatible `auth.json` credentials.
+- Writes managed directories as mode 0700 and auth files as mode 0600.
+- Atomically persists rotated OAuth tokens and rejects account-identity changes.
 
 ## AuthStore (enum)
 
@@ -88,7 +104,8 @@ static func clear<Credential>()
 
 ### LocalPaths (enum)
 Static path resolution methods:
-- `codexAuthPath()` and `codexConfigPath()` - Respects CODEX_HOME env var
+- `codexHomeURL()`, `codexAuthPath()`, and `codexConfigPath()` - Respect `CODEX_HOME`
+- Managed OpenAI account paths come from `OpenAIAccountProfile`, not environment variables
 - `claudeCredentialsPath()`, `geminiSettingsPath()`, `geminiOAuthPath()`
 - Uses `FileManager.default.homeDirectoryForCurrentUser`
 

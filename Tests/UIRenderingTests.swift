@@ -6,6 +6,14 @@ final class UIRenderingTests: XCTestCase {
     @MainActor
     func test_settingsRootViewRendersWithEveryProviderConfigurationRow() {
         let model = self.makeModel()
+        let managed = OpenAIAccountProfile(
+            id: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+            name: "Work",
+            isEnabled: true,
+            storage: .managed
+        )
+        model.openAIAccounts.append(managed)
+        model.openAIAccountNameInputs[managed.id] = managed.name
         let renderer = ImageRenderer(content: SettingsRootView(model: model))
         renderer.proposedSize = ProposedViewSize(width: 480, height: 620)
 
@@ -28,6 +36,7 @@ final class UIRenderingTests: XCTestCase {
                 ),
                 ProviderUsageResult(
                     provider: .codex,
+                    accountID: OpenAIAccountProfile.defaultID,
                     primaryWindow: UsageWindow(usedPercent: 25, resetAt: nil, windowSeconds: nil),
                     lastUpdated: Date()
                 ),
@@ -46,11 +55,56 @@ final class UIRenderingTests: XCTestCase {
     }
 
     @MainActor
+    func test_menuBarRootViewRendersNamedOpenAIAccountsAsIndependentRows() {
+        let model = self.makeModel()
+        let work = OpenAIAccountProfile(
+            id: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+            name: "Work",
+            isEnabled: true,
+            storage: .managed
+        )
+        model.providerEnabled = Dictionary(
+            uniqueKeysWithValues: ProviderID.allCases.map { ($0, false) }
+        )
+        model.openAIAccounts = [
+            .defaultAccount(name: "Personal"),
+            work,
+        ]
+        model.snapshot = UsageSnapshot(
+            results: [
+                ProviderUsageResult(
+                    provider: .codex,
+                    accountID: OpenAIAccountProfile.defaultID,
+                    primaryWindow: UsageWindow(usedPercent: 30, resetAt: nil, windowSeconds: nil),
+                    lastUpdated: Date()
+                ),
+                ProviderUsageResult(
+                    provider: .codex,
+                    accountID: work.id,
+                    primaryWindow: UsageWindow(usedPercent: 60, resetAt: nil, windowSeconds: nil),
+                    lastUpdated: Date()
+                ),
+            ],
+            lastUpdated: Date(),
+            isRefreshing: false
+        )
+        let renderer = ImageRenderer(
+            content: MenuBarRootView(model: model, onOpenSettings: {})
+        )
+        renderer.proposedSize = ProposedViewSize(width: 340, height: nil)
+
+        XCTAssertEqual(model.activeUsageRows.map(\.title), ["Personal", "Work"])
+        XCTAssertEqual(model.menuBarTitle, "AI 40%")
+        XCTAssertNotNil(renderer.nsImage)
+    }
+
+    @MainActor
     func test_menuBarRootViewRendersWhenEveryProviderIsDisabled() {
         let model = self.makeModel()
         model.providerEnabled = Dictionary(
             uniqueKeysWithValues: ProviderID.allCases.map { ($0, false) }
         )
+        model.openAIAccounts = [.defaultAccount(isEnabled: false)]
         let renderer = ImageRenderer(
             content: MenuBarRootView(model: model, onOpenSettings: {})
         )
@@ -93,7 +147,8 @@ final class UIRenderingTests: XCTestCase {
     @MainActor
     private func makeModel() -> MenuBarViewModel {
         MenuBarViewModel(
-            store: UsageStore(clients: [], pollIntervalSeconds: 3_600)
+            store: UsageStore(clients: [], pollIntervalSeconds: 3_600),
+            openAIAccounts: [.defaultAccount()]
         )
     }
 }
