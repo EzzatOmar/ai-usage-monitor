@@ -7,12 +7,13 @@
 ## A dditions
 
 - [x]: [A1](a/A1.md) - add manual update check action
+- [x]: [A2](a/A2.md) - add provider settings window
 
 <!-- Example: - [ ]: [A1](a/A1.md) - concise addition title -->
 
 ## S ubtractions
 
-<!-- Example: - [ ]: [S1](s/S1.md) - concise subtraction title -->
+- [x]: [S1](s/S1.md) - simplify the usage menu
 
 ## E xplorations
 

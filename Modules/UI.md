@@ -1,180 +1,103 @@
 # UI Module - Agent Guidelines
 
 ## Overview
-SwiftUI views for the macOS MenuBarExtra app. MVVM pattern with MenuBarViewModel driving MenuBarRootView.
 
-## Architecture
+SwiftUI views for a macOS `MenuBarExtra` app. A shared `@MainActor`
+`MenuBarViewModel` drives the compact usage panel and native Settings scene.
 
-### MenuBarViewModel (@Observable final class)
-- `@MainActor` - All mutations on main thread
-- `@Bindable` in views for SwiftUI observation
-- Contains UI state and business logic
-- Subscribes to UsageStore updates via `updates()` stream
+## View hierarchy
 
-### View Hierarchy
-- `MenuBarRootView` - Main panel container
-- `ProviderRow` - Individual provider display row
-- Editor modals (if show*Editor flags set)
+- `MenuBarRootView` — routine usage for activated providers only.
+- `ProviderRow` — quota, account, stale state, and errors; no configuration.
+- `SettingsRootView` — all provider activation, credentials, and update actions.
+- `ProviderSettingsRow` — provider toggle plus applicable credential action.
+- `APIKeySettingsEditor` — reusable secure inline key editor.
+- `UpdateSettingsSection` — manual update check and download/install status.
 
-## MenuBarViewModel State
+`AIUsageMonitorApp` registers both scenes:
 
-### Usage Data
-- `snapshot: UsageSnapshot` - Current provider results
-- Updated via `store.updates()` stream
+```swift
+MenuBarExtra(...) {
+    MenuBarRootView(model: model)
+}
+.menuBarExtraStyle(.window)
 
-### Editor State (one per provider)
-- `zaiAPIKeyInput: String` + `showZAIKeyEditor: Bool`
-- `cerebrasAPIKeyInput: String` + `showCerebrasKeyEditor: Bool`
-- `qwenCloudAPIKeyInput: String` + `showQwenCloudKeyEditor: Bool`
+Settings {
+    SettingsRootView(model: model)
+}
+```
 
-### Toggles
-- `claudeKeychainEnabled: Bool` - Claude keychain opt-in
+Both scenes must receive the same model instance.
 
-### Actions (all @MainActor)
-- `refreshNow()` - Trigger immediate store refresh
-- `enableClaudeKeychainAccess()` - Set opt-in and explicitly authorize keychain access
-- `openZAIKeyEditor()` / `saveZAIKey()` / `cancelZAIKeyEditor()`
-- `openCerebrasKeyEditor()` / `saveCerebrasKey()` / `cancelCerebrasKeyEditor()`
-- `openQwenCloudKeyEditor()` / `saveQwenCloudKey()` / `cancelQwenCloudKeyEditor()`
+## MenuBarViewModel
 
-### Computed Properties
-- `menuBarTitle: String` - "AI XX%" or "AI --"
-- `menuBarSystemImage` - "exclamationmark.triangle" on error, "chart.pie" normal
+`MenuBarViewModel` is `@MainActor` and `@Observable`. Views use `@Bindable`.
+It owns:
 
-## MenuBarRootView
+- the latest `UsageSnapshot` and provider-enabled dictionary;
+- credential editor inputs and visibility state;
+- Claude keychain authorization state;
+- updater state and actions;
+- `activeProviders`, which delegates to the pure `ProviderSelection` rules.
 
-### Structure
+Provider activation persists through `AuthStore`. Enabling a provider triggers
+an immediate refresh. The menu title's minimum quota must be calculated only
+from activated providers.
+
+## Main usage menu
+
+Keep the menu compact and monitoring-focused:
+
 ```swift
 VStack(alignment: .leading, spacing: 10) {
-    Header (title + refresh indicator)
-    ForEach(ProviderID.allCases) { provider ->
-        ProviderRow(...)
-    }
+    Header
+    ForEach(model.activeProviders) { ProviderRow(...) }
     Divider()
-
-    // Conditionally shown editors
-    if showZAIKeyEditor { ... }
-    if showCerebrasKeyEditor { ... }
-
-    Footer (last updated + refresh button)
+    Footer // updated time, GitHub, Settings, refresh icon, Quit
 }
 .padding(12)
 .frame(width: 340)
 ```
 
-### Key Patterns
-- `@Bindable var model` for @Observable
-- `ForEach(ProviderID.allCases, id: \.self)` iteration
-- Look up result via `snapshot.results.first(where: { $0.provider == provider })`
-- Conditional views with `if model.show*Editor`
-- `ProgressView().controlSize(.small)` during refresh
-- SecureField for credential inputs
-- HStack with Cancel (leading) / Save (trailing) buttons
+Rules:
 
-## ProviderRow
+- Never render disabled providers, activation toggles, key editors, credential
+  actions, or manual update checking in the main menu.
+- Show an empty state that directs users to Settings when no provider is active.
+- Refresh is icon-only, has an accessibility label/help string, and shares the
+  footer row with Quit.
+- Provider errors may explain that authorization is available in Settings.
 
-### Inputs
-- `result: ProviderUsageResult?` - Provider's latest result (nil if pending)
-- `provider: ProviderID` - Provider identifier
-- `onClaudeSetup`, `onClaudeKeychainAccess`, `onZAISetup`, `onCerebrasSetup` closures
+## Settings
 
-### Layout
-```
-HStack(alignment: .firstTextBaseline) {
-    VStack {
-        Provider name
-        Primary usage text (percent + reset time) or "No quota data"
-        Optional error detail text (lineLimit: 2)
-        "Using last known data" if stale (orange)
-    }
+Settings lists `ProviderID.allCases` so disabled providers remain discoverable.
+Each row has a persisted toggle. Configuration controls are provider-specific:
 
-    Spacer()
+- Claude — explicit keychain authorization.
+- Z.AI, Cerebras, Kimi, Minimax, QwenCloud — set/remove API key and secure editor.
+- Codex, Gemini, Cursor — local-login/session description; no key editor.
 
-    // Shows when errorState != nil
-    VStack(alignment: .trailing) {
-        Badge text (Auth needed, API error, etc.)
+Keep API inputs in `SecureField`, trim on save through view-model actions, and
+show the existing QwenCloud validation error inline. Update controls belong
+below the provider list and preserve all `UpdateStatus` states.
 
-        // Provider-specific action buttons
-        Claude: "Allow keychain" or "Authorize keychain" for auth failures
-        Z.AI: "Set key"
-        Cerebras: "Set key"
-        QwenCloud: "Set key"
-        Cursor: sign-in guidance only; authentication is reused from the Cursor app
-    }
-}
-```
+## SwiftUI conventions
 
-### Styling
-- Badge: `.background(Color.red.opacity(0.12), in: Capsule())`
-- Stale text: `.foregroundStyle(.orange)`
-- Action buttons: `.font(.caption2)`
-- Error messages: `.lineLimit(2)` with `.foregroundStyle(.secondary)`
+- Use `@Bindable` with observable view models.
+- Keep app state and actions in the view model, not local view state.
+- Local `@State` is appropriate only for ephemeral presentation such as an
+  error-details popover.
+- Use `.controlSize(.small)` for compact controls.
+- Use secondary/tertiary styles for quota metadata and orange for stale or
+  caution text.
+- Give every icon-only action an accessibility label and help text.
 
-## Editor Modals Pattern
+## Updating the UI
 
-Each editor follows this pattern:
-```swift
-VStack(alignment: .leading, spacing: 6) {
-    Text("Title")
-        .font(.caption.weight(.semibold))
-    Text("Instruction")
-        .font(.caption2)
-        .foregroundStyle(.secondary)
-    SecureField("placeholder", text: $model.input)
-        .textFieldStyle(.roundedBorder)
-    HStack {
-        Button("Cancel") { model.cancel() }
-        Spacer()
-        Button("Save") { model.save() }
-    }
-}
-```
+When adding a provider:
 
-## SwiftUI Best Practices
-
-### Observation
-- Use `@Bindable` with `@Observable` view models
-- Avoid @State in views for app state
-- Keep state in ViewModel, not Views
-
-### Layout
-- Use fixed width for main panel: `.frame(width: 340)`
-- Stack spacing: 10 for main, 6 for editors
-- Control size: `.controlSize(.small)` for compact UI
-- Padding: `.padding(12)` for main container
-
-### Conditional Views
-- One boolean per modal (e.g., `showClaudeTokenEditor`)
-- Check error state before showing action buttons
-- Only show applicable actions per provider
-
-### Colors
-- Error badges: `Color.red.opacity(0.12)` background
-- Stale/warning: `.foregroundStyle(.orange)`
-- Secondary text: `.foregroundStyle(.secondary)`
-- Standard SwiftUI colors for everything else
-
-### Accessibility
-- All buttons have clear labels
-- Error messages are truncated but meaningful
-- Icons use system SF Symbols
-
-## Updating UI Checklist
-
-When adding new provider:
-1. `ProviderID.allCases` iteration handles display automatically
-2. Add provider-specific action buttons in `ProviderRow`
-3. Add editor modal/input state or a provider-specific sign-in action to `MenuBarViewModel`
-4. Add conditional editor view in `MenuBarRootView`
-5. Add action closures to `ProviderRow` initializer
-
-## MenuBarExtra Integration
-
-Used in `AIUsageMonitorApp.swift`:
-```swift
-MenuBarExtra("AI", systemImage: model.menuBarSystemImage) {
-    MenuBarRootView(model: model)
-} label: {
-    Text(model.menuBarTitle)
-}
-```
+1. Add it to `ProviderID.allCases` through the enum case.
+2. Add its settings description and applicable setup controls.
+3. Add credential editor state/actions to `MenuBarViewModel` if needed.
+4. Keep `ProviderRow` focused on usage and errors.
+5. Add selection tests when activation behavior changes.

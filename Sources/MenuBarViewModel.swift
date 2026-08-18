@@ -30,8 +30,15 @@ final class MenuBarViewModel {
         self.start()
     }
 
+    var activeProviders: [ProviderID] {
+        ProviderSelection.activeProviders(providerEnabled: self.providerEnabled)
+    }
+
     var menuBarTitle: String {
-        if let minRemaining = self.snapshot.minimumRemainingPercent {
+        if let minRemaining = ProviderSelection.minimumRemainingPercent(
+            results: self.snapshot.results,
+            providerEnabled: self.providerEnabled
+        ) {
             return "AI \(Int(minRemaining.rounded()))%"
         }
         return "AI --"

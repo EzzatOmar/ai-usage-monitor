@@ -35,6 +35,7 @@ Download the latest `.dmg` from [Releases](../../releases/latest), open it, and 
 ## What it does
 
 - Runs as a `MenuBarExtra` app with a compact SwiftUI panel.
+- Shows only activated providers in the usage panel; provider toggles, API keys, and update checks live in Settings.
 - Polls every 5 minutes.
 - Uses direct provider APIs as the primary path (no interactive CLI scraping).
 - Shows remaining quota %, reset timing, and provider-specific error badges.
@@ -80,9 +81,9 @@ This produces `dist/AIUsageMonitor.dmg`.
 - Endpoints used are not all public/stable and may evolve.
 - When local credentials are missing or expired, the app reports `Auth needed` or `Token expired` without launching intrusive auth flows.
 - Claude reads auth from the native macOS keychain. Make sure you have already authenticated with Claude Code (`claude` in Terminal) before using this app.
-- When Z.AI shows `Auth needed`, click `Set key` and paste your API key.
+- When Z.AI shows `Auth needed`, open Settings, click `Set key`, and paste your API key.
 - Z.AI uses quota/usage monitor endpoints on `api.z.ai` to show usage when key auth is valid.
-- When QwenCloud shows `Auth needed`, click `Set key` to add the subscription's `sk-sp-*` key. The app can also discover `BAILIAN_TOKEN_PLAN_API_KEY` from `~/.qwen/settings.json`.
+- When QwenCloud shows `Auth needed`, open Settings and click `Set key` to add the subscription's `sk-sp-*` key. The app can also discover `BAILIAN_TOKEN_PLAN_API_KEY` from `~/.qwen/settings.json`.
 - QwenCloud API-key validation uses only `GET /compatible-mode/v1/models` and consumes no inference credits. Since QwenCloud provides no API-key-authenticated quota endpoint, the app reports that limitation instead of making an inference request or showing fabricated quota data.
 - Cursor reads `cursorAuth/accessToken` from the local read-only `state.vscdb` used by Cursor and Cursor Nightly, with Cursor Agent `auth.json` files as fallbacks. The token is never copied into app storage or logged.
 - Cursor shows the monthly API pool as its primary window and Auto/Composer as its secondary window. It first calls `/api/dashboard/get-current-period-usage`, then falls back to `/api/usage-summary`.

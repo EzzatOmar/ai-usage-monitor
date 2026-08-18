@@ -38,5 +38,9 @@ struct AIUsageMonitorApp: App {
             MenuBarRootView(model: self.model)
         }
         .menuBarExtraStyle(.window)
+
+        Settings {
+            SettingsRootView(model: self.model)
+        }
     }
 }

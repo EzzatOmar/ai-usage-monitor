@@ -126,6 +126,24 @@ struct UsageSnapshot: Sendable, Equatable {
     }
 }
 
+/// Pure selection rules shared by the menu title and provider list.
+enum ProviderSelection {
+    static func activeProviders(providerEnabled: [ProviderID: Bool]) -> [ProviderID] {
+        ProviderID.allCases.filter { providerEnabled[$0] ?? true }
+    }
+
+    static func minimumRemainingPercent(
+        results: [ProviderUsageResult],
+        providerEnabled: [ProviderID: Bool]
+    ) -> Double? {
+        let activeProviders = Set(self.activeProviders(providerEnabled: providerEnabled))
+        return results
+            .filter { activeProviders.contains($0.provider) }
+            .compactMap { $0.primaryWindow?.remainingPercent }
+            .min()
+    }
+}
+
 enum RelativeTimeFormatter {
     private static let formatter: DateComponentsFormatter = {
         let f = DateComponentsFormatter()
