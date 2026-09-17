@@ -8,7 +8,7 @@ Contains core domain models and types used throughout the application. All types
 ### ProviderID (enum)
 - CaseIterable enum for all supported AI providers
 - RawValue is String (provider name)
-- Cases: claude, codex, gemini, zai, cerebras, kimi, minimax, qwenCloud, cursor
+- Cases: claude, codex, gemini, zai, cerebras, kimi, minimax, qwenCloud, cursor, openCodeGo
 - Used for iteration in UI and lookup in results
 
 ### ProviderClientID (struct)
@@ -30,7 +30,9 @@ Contains core domain models and types used throughout the application. All types
 
 ### ProviderUsageResult (struct)
 - Result of a fetchUsage() call from a provider client
-- Properties: provider, optional accountID, primaryWindow, secondaryWindow, accountLabel, lastUpdated, errorState, isStale
+- Properties: provider, optional accountID, primaryWindow, secondaryWindow, tertiaryWindow, accountLabel, lastUpdated, errorState, isStale
+- OpenCode Go uses primary/secondary/tertiary for 5-hour/weekly/monthly windows.
+- `menuRemainingPercent` selects Go's tightest window; other providers retain primary-only behavior.
 - Computed `id` returns `ProviderClientID`
 - Equatable, Sendable
 - Never thrown; always returned
@@ -52,4 +54,4 @@ Contains core domain models and types used throughout the application. All types
 ## When to Extend
 - Adding new provider: add case to ProviderID
 - New error state: add case to ProviderErrorState with appropriate badge/detail text
-- Additional window types: add tertiaryWindow to UsageWindow/ProviderUsageResult
+- Additional windows: `ProviderUsageResult.tertiaryWindow` is optional and preserved by the stale cache; monthly durations remain nil because billing months vary.

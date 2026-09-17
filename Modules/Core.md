@@ -46,6 +46,7 @@ await withTaskGroup(of: ProviderUsageResult.self) { group in
 - If fetch succeeds: update `lastGood[result.id]` and mark `isStale = false`
 - If fetch fails: use `lastGood[result.id]` with `isStale = true` and new errorState
 - Falls back to current result if no cached
+- Preserves all three subscription windows, including OpenCode Go's monthly `tertiaryWindow`
 
 #### Publishing
 - Updates continuations for all subscribers
@@ -77,6 +78,7 @@ Persistence layer for authentication credentials using UserDefaults and Keychain
 - `aiUsageMonitor.claudeUseKeychain` (Bool)
 - `aiUsageMonitor.cerebrasApiKey`
 - `aiUsageMonitor.qwenCloudApiKey`
+- `aiUsageMonitor.openCodeGoApiKey`
 
 ### API Pattern
 Each credential has three methods:
@@ -107,6 +109,7 @@ Static path resolution methods:
 - `codexHomeURL()`, `codexAuthPath()`, and `codexConfigPath()` - Respect `CODEX_HOME`
 - Managed OpenAI account paths come from `OpenAIAccountProfile`, not environment variables
 - `claudeCredentialsPath()`, `geminiSettingsPath()`, `geminiOAuthPath()`
+- `openCodeAuthPath()` — respects absolute `XDG_DATA_HOME`, otherwise uses `~/.local/share/opencode/auth.json`
 - Uses `FileManager.default.homeDirectoryForCurrentUser`
 
 ### JSONFile (enum)

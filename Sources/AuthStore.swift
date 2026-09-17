@@ -11,6 +11,22 @@ enum AuthStore {
     private static let minimaxKeyName = "aiUsageMonitor.minimaxApiKey"
     private static let qwenCloudKeyName = "aiUsageMonitor.qwenCloudApiKey"
 
+    private static let openCodeGoKeyName = "aiUsageMonitor.openCodeGoApiKey"
+
+    static func loadOpenCodeGoAPIKey() -> String? {
+        self.trimmedNonempty(self.defaults.string(forKey: self.openCodeGoKeyName))
+    }
+
+    static func saveOpenCodeGoAPIKey(_ value: String) -> Bool {
+        guard let trimmed = self.trimmedNonempty(value) else { return false }
+        self.defaults.set(trimmed, forKey: self.openCodeGoKeyName)
+        return true
+    }
+
+    static func clearOpenCodeGoAPIKey() {
+        self.defaults.removeObject(forKey: self.openCodeGoKeyName)
+    }
+
     static func loadZAIAPIKey() -> String? {
         let value = self.defaults.string(forKey: self.zaiKeyName)?.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let value, !value.isEmpty else { return nil }

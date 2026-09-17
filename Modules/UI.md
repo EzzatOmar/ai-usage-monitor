@@ -81,7 +81,8 @@ Settings lists `ProviderID.allCases` so disabled providers remain discoverable.
 Each row has a persisted toggle. Configuration controls are provider-specific:
 
 - Claude — explicit keychain authorization.
-- Z.AI, Cerebras, Kimi, Minimax, QwenCloud — set/remove API key and secure editor.
+- Z.AI, Cerebras, Kimi, Minimax, QwenCloud, OpenCode Go — set/remove API key and secure editor.
+- OpenCode Go — three labeled quota rows (5h, Weekly, Monthly); its tightest window contributes to the menu title.
 - OpenAI/Codex — one default-path account plus named app-managed accounts with browser login/re-login.
 - Gemini, Cursor — local-login/session description; no key editor.
 

@@ -14,7 +14,7 @@ final class ProviderSelectionTests: XCTestCase {
 
         XCTAssertEqual(
             ProviderSelection.activeProviders(providerEnabled: providerEnabled),
-            [.codex, .zai, .kimi]
+            [.codex, .zai, .kimi, .openCodeGo]
         )
     }
 

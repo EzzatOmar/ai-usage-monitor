@@ -189,6 +189,37 @@ final class UsageStoreTests: XCTestCase {
         XCTAssertTrue(result?.isStale == true)
     }
 
+    func test_openCodeGoPreservesAllThreeWindowsOnFailureAndRecovers() async {
+        let enabled = AuthStore.isProviderEnabled(.openCodeGo)
+        AuthStore.setProviderEnabled(.openCodeGo, true)
+        defer { AuthStore.setProviderEnabled(.openCodeGo, enabled) }
+        let now = Date()
+        let good = ProviderUsageResult(
+            provider: .openCodeGo,
+            primaryWindow: UsageWindow(usedPercent: 10, resetAt: now, windowSeconds: 18_000),
+            secondaryWindow: UsageWindow(usedPercent: 20, resetAt: now, windowSeconds: 604_800),
+            tertiaryWindow: UsageWindow(usedPercent: 80, resetAt: now, windowSeconds: nil),
+            lastUpdated: now
+        )
+        let store = UsageStore(clients: [StubClient(providerID: .openCodeGo, responses: [
+            good,
+            ProviderUsageResult(provider: .openCodeGo, lastUpdated: now.addingTimeInterval(60), errorState: .tokenExpired),
+            good,
+        ])])
+        await store.refreshNow()
+        await store.refreshNow()
+        let stale = await firstSnapshot(from: store).results.first
+        XCTAssertEqual(stale?.primaryWindow, good.primaryWindow)
+        XCTAssertEqual(stale?.secondaryWindow, good.secondaryWindow)
+        XCTAssertEqual(stale?.tertiaryWindow, good.tertiaryWindow)
+        XCTAssertEqual(stale?.lastUpdated, now)
+        XCTAssertEqual(stale?.errorState, .tokenExpired)
+        XCTAssertEqual(stale?.isStale, true)
+        await store.refreshNow()
+        let recovered = await firstSnapshot(from: store).results.first
+        XCTAssertEqual(recovered, good)
+    }
+
     private func firstSnapshot(from store: UsageStore) async -> UsageSnapshot {
         let stream = await store.updates()
         for await value in stream {

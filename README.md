@@ -11,6 +11,7 @@ A native SwiftUI macOS menu bar app that shows remaining subscription usage for 
 - Z.AI
 - QwenCloud
 - Cursor
+- OpenCode Go
 
 Tiny footprint: ~27 MB RAM, refreshes every 5 minutes.
 
@@ -50,6 +51,7 @@ Download the latest `.dmg` from [Releases](../../releases/latest), open it, and 
 - Validates QwenCloud Individual keys with the free `/models` endpoint. QwenCloud currently exposes no API-key-authenticated endpoint for its 5-hour/7-day quota values.
 - Includes Cursor Individual usage by reusing the session already stored by the signed-in Cursor app. `CURSOR_SESSION_TOKEN` is available as a manual override.
 - Reads Cursor's dashboard usage endpoints without making model requests or requiring an Admin API key.
+- Includes OpenCode Go's 5-hour, weekly, and monthly quotas via its read-only usage API. Uses a pasted key, `OPENCODE_GO_API_KEY`, or existing local OpenCode Go auth.
 
 ## Build
 
@@ -91,3 +93,6 @@ This produces `dist/AIUsageMonitor.dmg`.
 - Cursor reads `cursorAuth/accessToken` from the local read-only `state.vscdb` used by Cursor and Cursor Nightly, with Cursor Agent `auth.json` files as fallbacks. The token is never copied into app storage or logged.
 - Cursor shows the monthly API pool as its primary window and Auto/Composer as its secondary window. It first calls `/api/dashboard/get-current-period-usage`, then falls back to `/api/usage-summary`.
 - Cursor's dashboard endpoints are undocumented and may change. A rejected or expired session is surfaced with instructions to sign into Cursor again.
+- For OpenCode Go, open **Settings → OpenCode Go → Set key** and paste the API key associated with your Go subscription. Alternatively, connect Go in OpenCode; the app reads the `opencode-go` API entry in `$XDG_DATA_HOME/opencode/auth.json` (default `~/.local/share/opencode/auth.json`) without modifying it.
+- OpenCode Go uses `GET https://opencode.ai/zen/go/v1/usage` with bearer-key authentication; it never makes inference requests. All three reset timestamps come from the server, including the subscription-month reset. The tightest of Go's three windows contributes to the menu-bar percentage.
+- Removing the saved Go key falls back to environment/local credentials. Disable the provider to stop polling. A Zen-only key without an active Go subscription cannot return Go usage.

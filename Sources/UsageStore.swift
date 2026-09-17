@@ -142,6 +142,7 @@ actor UsageStore {
                         accountID: cached.accountID,
                         primaryWindow: cached.primaryWindow,
                         secondaryWindow: cached.secondaryWindow,
+                        tertiaryWindow: cached.tertiaryWindow,
                         modelWindows: cached.modelWindows,
                         accountLabel: cached.accountLabel,
                         lastUpdated: cached.lastUpdated,

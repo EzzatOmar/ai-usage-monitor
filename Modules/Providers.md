@@ -139,6 +139,17 @@ request to estimate quota. Revisit this provider when QwenCloud documents or
 ships a read-only API-key endpoint returning current 5-hour and 7-day usage and
 reset timestamps.
 
+### OpenCodeGoClient
+
+- Calls only `GET https://opencode.ai/zen/go/v1/usage` with a bearer API key.
+- Priority: AuthStore saved key, `OPENCODE_GO_API_KEY`, then the `opencode-go` API entry in `$XDG_DATA_HOME/opencode/auth.json` (default `~/.local/share`). Never modifies local auth.
+- `OpenCodeGoUsageCore` decodes `usage.{rolling,weekly,monthly}.{status,percent,resetsAt}`; percentages are consumed quota and reset timestamps are authoritative.
+- Maps windows to primary (5h), secondary (weekly), and tertiary (monthly). Never assumes a fixed 30-day month.
+- API 401 means rejected credentials; 403 `EntitlementError` means Go subscription required. Generic 403 may be an edge/access failure, not a subscription error.
+- Quota `status: rate-limited` is valid usage data; only HTTP 429 triggers store retry/backoff.
+- Never calls inference endpoints, scrapes dashboard cookies, or displays raw response bodies.
+- See [decision 0003](../ledger/0003-monitor-opencode-go-three-windows.md) and [A5 research](../tasks/a/A5.md).
+
 ### CursorClient
 
 - Supports signed-in Cursor accounts without an Admin API key.

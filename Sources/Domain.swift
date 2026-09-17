@@ -10,6 +10,7 @@ enum ProviderID: String, CaseIterable, Sendable {
     case minimax = "Minimax"
     case qwenCloud = "QwenCloud"
     case cursor = "Cursor"
+    case openCodeGo = "OpenCode Go"
 }
 
 struct ProviderClientID: Hashable, Sendable {
@@ -98,6 +99,7 @@ struct ProviderUsageResult: Sendable, Equatable, Identifiable {
     let accountID: String?
     let primaryWindow: UsageWindow?
     let secondaryWindow: UsageWindow?
+    let tertiaryWindow: UsageWindow?
     let modelWindows: [ModelUsageWindow]
     let accountLabel: String?
     let lastUpdated: Date
@@ -109,6 +111,7 @@ struct ProviderUsageResult: Sendable, Equatable, Identifiable {
         accountID: String? = nil,
         primaryWindow: UsageWindow? = nil,
         secondaryWindow: UsageWindow? = nil,
+        tertiaryWindow: UsageWindow? = nil,
         modelWindows: [ModelUsageWindow] = [],
         accountLabel: String? = nil,
         lastUpdated: Date,
@@ -119,6 +122,7 @@ struct ProviderUsageResult: Sendable, Equatable, Identifiable {
         self.accountID = accountID
         self.primaryWindow = primaryWindow
         self.secondaryWindow = secondaryWindow
+        self.tertiaryWindow = tertiaryWindow
         self.modelWindows = modelWindows
         self.accountLabel = accountLabel
         self.lastUpdated = lastUpdated
@@ -128,6 +132,13 @@ struct ProviderUsageResult: Sendable, Equatable, Identifiable {
 
     var id: ProviderClientID {
         ProviderClientID(provider: self.provider, accountID: self.accountID)
+    }
+
+    /// Go can be blocked by any of its three windows; preserve other providers' primary-only behavior.
+    var menuRemainingPercent: Double? {
+        guard self.provider == .openCodeGo else { return self.primaryWindow?.remainingPercent }
+        return [self.primaryWindow, self.secondaryWindow, self.tertiaryWindow]
+            .compactMap { $0?.remainingPercent }.min()
     }
 }
 
@@ -139,7 +150,7 @@ struct UsageSnapshot: Sendable, Equatable {
     static let empty = UsageSnapshot(results: [], lastUpdated: nil, isRefreshing: false)
 
     var minimumRemainingPercent: Double? {
-        self.results.compactMap { $0.primaryWindow?.remainingPercent }.min()
+        self.results.compactMap { $0.menuRemainingPercent }.min()
     }
 }
 
@@ -156,7 +167,7 @@ enum ProviderSelection {
         let activeProviders = Set(self.activeProviders(providerEnabled: providerEnabled))
         return results
             .filter { activeProviders.contains($0.provider) }
-            .compactMap { $0.primaryWindow?.remainingPercent }
+            .compactMap { $0.menuRemainingPercent }
             .min()
     }
 
@@ -166,7 +177,7 @@ enum ProviderSelection {
     ) -> Double? {
         results
             .filter { activeClientIDs.contains($0.id) }
-            .compactMap { $0.primaryWindow?.remainingPercent }
+            .compactMap { $0.menuRemainingPercent }
             .min()
     }
 }

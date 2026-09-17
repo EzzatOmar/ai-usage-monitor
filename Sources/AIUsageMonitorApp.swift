@@ -20,6 +20,7 @@ struct AIUsageMonitorApp: App {
                     MinimaxClient(),
                     QwenCloudClient(),
                     CursorClient(),
+                    OpenCodeGoClient(),
                 ],
                 dynamicClients: {
                     OpenAIAccountStore.loadAccounts()

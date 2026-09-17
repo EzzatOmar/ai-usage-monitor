@@ -18,7 +18,7 @@ final class UIRenderingTests: XCTestCase {
         renderer.proposedSize = ProposedViewSize(width: 480, height: 620)
 
         XCTAssertNotNil(renderer.nsImage)
-        XCTAssertEqual(ProviderID.allCases.count, 9)
+        XCTAssertEqual(ProviderID.allCases.count, 10)
     }
 
     @MainActor
@@ -96,6 +96,31 @@ final class UIRenderingTests: XCTestCase {
         XCTAssertEqual(model.activeUsageRows.map(\.title), ["Personal", "Work"])
         XCTAssertEqual(model.menuBarTitle, "AI 40%")
         XCTAssertNotNil(renderer.nsImage)
+    }
+
+    @MainActor
+    func test_openCodeGoRendersThreeWindowsAndKeyEditor() {
+        let model = self.makeModel()
+        model.providerEnabled = Dictionary(uniqueKeysWithValues: ProviderID.allCases.map { ($0, $0 == .openCodeGo) })
+        model.openAIAccounts = [.defaultAccount(isEnabled: false)]
+        model.snapshot = UsageSnapshot(results: [ProviderUsageResult(
+            provider: .openCodeGo,
+            primaryWindow: UsageWindow(usedPercent: 10, resetAt: nil, windowSeconds: 18_000),
+            secondaryWindow: UsageWindow(usedPercent: 20, resetAt: nil, windowSeconds: 604_800),
+            tertiaryWindow: UsageWindow(usedPercent: 90, resetAt: nil, windowSeconds: nil),
+            lastUpdated: Date()
+        )], lastUpdated: Date(), isRefreshing: false)
+        let menu = ImageRenderer(content: MenuBarRootView(model: model, onOpenSettings: {}))
+        XCTAssertNotNil(menu.nsImage)
+        XCTAssertEqual(model.activeUsageRows.map(\.provider), [.openCodeGo])
+        XCTAssertEqual(model.menuBarTitle, "AI 10%")
+        model.showOpenCodeGoKeyEditor = true
+        let settings = ImageRenderer(content: SettingsRootView(model: model))
+        XCTAssertNotNil(settings.nsImage)
+        model.openCodeGoAPIKeyInput = "test-secret"
+        model.cancelOpenCodeGoKeyEditor()
+        XCTAssertFalse(model.showOpenCodeGoKeyEditor)
+        XCTAssertEqual(model.openCodeGoAPIKeyInput, "")
     }
 
     @MainActor

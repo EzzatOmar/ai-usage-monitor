@@ -92,6 +92,7 @@ let store = UsageStore(clients: [StubClient(...)])
 - Z.AI: ZAI_API_KEY, ZAI_KEY, ZHIPU_API_KEY, ZHIPUAI_API_KEY
 - Cerebras: CEREBRAS_API_KEY
 - Cursor: CURSOR_SESSION_TOKEN (optional override; normally discovered from local Cursor auth)
+- OpenCode Go: OPENCODE_GO_API_KEY (or local `opencode-go` API entry in `$XDG_DATA_HOME/opencode/auth.json`)
 - Access: ProcessInfo.processInfo.environment
 
 ### Provider-Specific Notes

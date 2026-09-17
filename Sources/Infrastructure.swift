@@ -30,6 +30,20 @@ enum LocalPaths {
         self.codexHomeURL(env: env).appendingPathComponent("config.toml")
     }
 
+    static func openCodeAuthPath(
+        env: [String: String] = ProcessInfo.processInfo.environment,
+        home: URL = FileManager.default.homeDirectoryForCurrentUser
+    ) -> URL {
+        let xdg = env["XDG_DATA_HOME"]?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let dataHome: URL
+        if let xdg, xdg.hasPrefix("/") {
+            dataHome = URL(fileURLWithPath: xdg, isDirectory: true)
+        } else {
+            dataHome = home.appendingPathComponent(".local/share", isDirectory: true)
+        }
+        return dataHome.appendingPathComponent("opencode").appendingPathComponent("auth.json")
+    }
+
     static func claudeCredentialsPath() -> URL {
         FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".claude")

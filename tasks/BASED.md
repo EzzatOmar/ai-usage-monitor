@@ -11,6 +11,7 @@
 - [x]: [A2](a/A2.md) - add provider settings window
 - [x]: [A3](a/A3.md) - support multiple OpenAI usage accounts
 - [x]: [A4](a/A4.md) - add managed OpenAI account login
+- [~]: [A5](a/A5.md) - monitor OpenCode Go subscription usage
 
 <!-- Example: - [ ]: [A1](a/A1.md) - concise addition title -->
 

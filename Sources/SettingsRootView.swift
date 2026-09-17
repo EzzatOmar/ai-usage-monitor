@@ -63,6 +63,8 @@ struct SettingsRootView: View {
             self.model.openMinimaxKeyEditor()
         case .qwenCloud:
             self.model.openQwenCloudKeyEditor()
+        case .openCodeGo:
+            self.model.openOpenCodeGoKeyEditor()
         case .claude, .codex, .gemini, .cursor:
             break
         }
@@ -107,6 +109,16 @@ struct SettingsRootView: View {
                 input: self.$model.minimaxAPIKeyInput,
                 onCancel: { self.model.cancelMinimaxKeyEditor() },
                 onSave: { self.model.saveMinimaxKey() }
+            )
+        case .openCodeGo where self.model.showOpenCodeGoKeyEditor:
+            APIKeySettingsEditor(
+                title: "Set OpenCode Go API key",
+                instructions: "Paste the API key for your Go subscription from opencode.ai. Otherwise, the local OpenCode Go key is used automatically.",
+                warning: "Removing a saved key falls back to environment/local credentials; disable the provider to stop monitoring.",
+                placeholder: "OPENCODE_GO_API_KEY",
+                input: self.$model.openCodeGoAPIKeyInput,
+                onCancel: { self.model.cancelOpenCodeGoKeyEditor() },
+                onSave: { self.model.saveOpenCodeGoKey() }
             )
         case .qwenCloud where self.model.showQwenCloudKeyEditor:
             APIKeySettingsEditor(
@@ -300,7 +312,7 @@ private struct ProviderSettingsRow: View {
                 self.onClaudeKeychainAccess()
             }
             .controlSize(.small)
-        case .zai, .cerebras, .kimi, .minimax, .qwenCloud:
+        case .zai, .cerebras, .kimi, .minimax, .qwenCloud, .openCodeGo:
             HStack(spacing: 4) {
                 Button("Set key") {
                     self.onSetKey()
@@ -341,6 +353,8 @@ private struct ProviderSettingsRow: View {
             return "Uses a Token Plan Individual sk-sp-* key."
         case .cursor:
             return "Uses the signed-in Cursor app session."
+        case .openCodeGo:
+            return "5-hour, weekly, and monthly usage via API key or local OpenCode auth."
         }
     }
 }

@@ -115,6 +115,12 @@ private struct ProviderRow: View {
                         }
                     }
 
+                    if let monthly = result.tertiaryWindow {
+                        Text("Monthly: \(Int(monthly.remainingPercent.rounded()))% left - \(RelativeTimeFormatter.resetText(monthly.resetAt))")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
+
                     if let accountLabel = result.accountLabel {
                         Text(accountLabel)
                             .font(.caption2)
@@ -189,8 +195,11 @@ private struct ProviderRow: View {
         if self.provider == .cursor, self.result?.errorState == .tokenExpired {
             return "Cursor session expired; sign into Cursor again"
         }
+        if self.provider == .openCodeGo, self.result?.errorState == .tokenExpired {
+            return "OpenCode Go key rejected; replace it in Settings or reconnect OpenCode Go"
+        }
         if self.result?.errorState == .authNeeded,
-           [.zai, .cerebras, .kimi, .minimax, .qwenCloud].contains(self.provider) {
+           [.zai, .cerebras, .kimi, .minimax, .qwenCloud, .openCodeGo].contains(self.provider) {
             return "Add the provider API key in Settings"
         }
         return rawDetail
@@ -198,7 +207,7 @@ private struct ProviderRow: View {
 
     private var primaryWindowLabel: String {
         switch self.provider {
-        case .qwenCloud:
+        case .qwenCloud, .openCodeGo:
             return "5h: "
         case .cursor:
             return "API: "

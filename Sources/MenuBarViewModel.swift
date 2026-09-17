@@ -34,6 +34,8 @@ final class MenuBarViewModel {
     var showKimiKeyEditor: Bool = false
     var minimaxAPIKeyInput: String = ""
     var showMinimaxKeyEditor: Bool = false
+    var openCodeGoAPIKeyInput: String = ""
+    var showOpenCodeGoKeyEditor: Bool = false
     var qwenCloudAPIKeyInput: String = ""
     var qwenCloudAPIKeyError: String?
     var showQwenCloudKeyEditor: Bool = false
@@ -326,6 +328,28 @@ final class MenuBarViewModel {
         self.showMinimaxKeyEditor = false
     }
 
+    func openOpenCodeGoKeyEditor() {
+        self.openCodeGoAPIKeyInput = AuthStore.loadOpenCodeGoAPIKey() ?? ""
+        self.showOpenCodeGoKeyEditor = true
+    }
+
+    func saveOpenCodeGoKey() {
+        let trimmed = self.openCodeGoAPIKeyInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            AuthStore.clearOpenCodeGoAPIKey()
+        } else {
+            _ = AuthStore.saveOpenCodeGoAPIKey(trimmed)
+        }
+        self.openCodeGoAPIKeyInput = ""
+        self.showOpenCodeGoKeyEditor = false
+        self.refreshNow()
+    }
+
+    func cancelOpenCodeGoKeyEditor() {
+        self.openCodeGoAPIKeyInput = ""
+        self.showOpenCodeGoKeyEditor = false
+    }
+
     func openQwenCloudKeyEditor() {
         self.qwenCloudAPIKeyInput = AuthStore.loadQwenCloudAPIKey() ?? ""
         self.qwenCloudAPIKeyError = nil
@@ -372,6 +396,9 @@ final class MenuBarViewModel {
             QwenCloudAPIKeyTransport.shared.clearCachedValidation()
         case .cursor:
             break
+        case .openCodeGo:
+            AuthStore.clearOpenCodeGoAPIKey()
+            self.cancelOpenCodeGoKeyEditor()
         }
         self.refreshNow()
     }
