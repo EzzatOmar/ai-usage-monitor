@@ -64,7 +64,11 @@ VStack(alignment: .leading, spacing: 10) {
 }
 .padding(12)
 .frame(width: 340)
+.fixedSize(horizontal: false, vertical: true)
 ```
+
+Keep the menu's vertical size content-driven so the hosting window cannot
+preserve surplus height when provider/account rows or quota details disappear.
 
 Rules:
 

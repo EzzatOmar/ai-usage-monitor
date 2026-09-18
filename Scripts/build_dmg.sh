@@ -182,8 +182,12 @@ hdiutil convert "${TEMP_DMG}" -format UDZO -imagekey zlib-level=9 -o "${DMG_PATH
 rm -f "${TEMP_DMG}"
 rm -rf "${DMG_STAGING}"
 
+# Stable asset for the website's /releases/latest/download URL.
+cp "${DMG_PATH}" "${DIST_DIR}/${APP_NAME}.dmg"
+
 echo ""
 echo "==> Done!"
 echo "    App:  ${APP_BUNDLE}"
 echo "    DMG:  ${DMG_PATH}"
+echo "    Latest download alias: ${DIST_DIR}/${APP_NAME}.dmg"
 echo "    Version: ${MARKETING_VERSION} (build ${BUILD_NUMBER})"

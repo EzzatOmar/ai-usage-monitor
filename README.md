@@ -77,7 +77,10 @@ swift test
 ./Scripts/build_dmg.sh
 ```
 
-This produces `dist/AIUsageMonitor.dmg`.
+This produces `dist/AIUsageMonitor-<version>.dmg` and an identical
+`dist/AIUsageMonitor.dmg` alias. The release workflow publishes both; the website
+uses GitHub's `/releases/latest/download/AIUsageMonitor.dmg` URL so downloads
+follow the latest release automatically, without a website version update.
 
 ## Notes
 

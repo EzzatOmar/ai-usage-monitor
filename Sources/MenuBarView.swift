@@ -75,6 +75,8 @@ struct MenuBarRootView: View {
         }
         .padding(12)
         .frame(width: 340)
+        // Do not accept the MenuBarExtra window's previous height after rows change.
+        .fixedSize(horizontal: false, vertical: true)
     }
 }
 

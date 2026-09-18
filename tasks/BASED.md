@@ -4,6 +4,7 @@
 
 - [x]: [B1](b/B1.md) - fix release actor isolation build
 - [~]: [B2](b/B2.md) - make settings window open reliably
+- [~]: [B3](b/B3.md) - resize usage menu and keep website downloads current
 
 ## A dditions
 
