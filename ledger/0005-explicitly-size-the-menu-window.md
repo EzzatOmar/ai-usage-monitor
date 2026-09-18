@@ -37,4 +37,4 @@ We will keep SwiftUI MenuBarExtra but explicitly synchronize its native window t
 
 - [B4](../tasks/b/B4.md)
 - [Native-window tests](../Tests/MenuWindowSizingTests.swift)
-- [Real-menu smoke test](../scripts/test_menu_window_sizing.sh)
+- [Real-menu smoke test](../Scripts/test_menu_window_sizing.sh)

@@ -12,7 +12,7 @@ XCTest-based tests for AIUsageMonitor. Tests use stub clients to isolate units u
 - `Tests/ProviderSelectionTests.swift` - enabled provider/account quota selection
 - `Tests/UIRenderingTests.swift` - menu, Settings, and AppKit window lifecycle rendering
 - `Tests/MenuWindowSizingTests.swift` - actual window geometry with automatic hosting constraints disabled, stale-frame recovery, and bridge lifecycle
-- `scripts/test_menu_window_sizing.sh` - standalone real MenuBarExtra toggle/reopen smoke test; run on a macOS GUI session (also required by release CI)
+- `Scripts/test_menu_window_sizing.sh` - standalone real MenuBarExtra toggle/reopen smoke test; run on a macOS GUI session (also required by release CI)
 
 ### Test Pattern
 ```swift

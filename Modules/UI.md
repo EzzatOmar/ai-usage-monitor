@@ -76,7 +76,7 @@ content size after layout and on native resize/key events, preserving the top
 edge. It must only touch its attached window, never discover windows globally
 or resize Settings. See ledger decision 0005 and `MenuWindowSizingTests`.
 
-Run `bash scripts/test_menu_window_sizing.sh` to verify a real MenuBarExtra with
+Run `bash Scripts/test_menu_window_sizing.sh` to verify a real MenuBarExtra with
 the production Settings toggle actions; this check also gates release CI.
 
 Rules:

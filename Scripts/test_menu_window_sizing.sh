@@ -8,6 +8,6 @@ sources=()
 for source in Sources/*.swift; do
     [[ "$source" == "Sources/AIUsageMonitorApp.swift" ]] || sources+=("$source")
 done
-swiftc -parse-as-library "${sources[@]}" scripts/MenuWindowSizingSmoke.swift \
+swiftc -parse-as-library "${sources[@]}" Scripts/MenuWindowSizingSmoke.swift \
     -lsqlite3 -o "$TEMP_DIR/MenuWindowSizingSmoke"
 "$TEMP_DIR/MenuWindowSizingSmoke"
