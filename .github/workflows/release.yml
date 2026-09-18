@@ -36,6 +36,11 @@ jobs:
         if: steps.check.outputs.exists == 'false'
         run: swift test
 
+      - name: Verify real menu window resizing
+        if: steps.check.outputs.exists == 'false'
+        timeout-minutes: 3
+        run: bash scripts/test_menu_window_sizing.sh
+
       - name: Build DMG
         if: steps.check.outputs.exists == 'false'
         run: |

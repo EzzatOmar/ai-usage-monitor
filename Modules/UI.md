@@ -10,6 +10,8 @@ AppKit shell presents the settings window reliably from the accessory app.
 
 - `MenuBarRootView` — routine usage for activated providers only.
 - `ProviderRow` — quota, account, stale state, and errors; no configuration.
+- `MenuWindowSizingBridge` — measures the menu's ideal content and explicitly
+  sizes its attached AppKit window, including after reopen/stale-frame restoration.
 - `SettingsRootView` — all provider activation, credentials, and update actions.
 - `ProviderSettingsRow` — provider toggle plus applicable credential action.
 - `APIKeySettingsEditor` — reusable secure inline key editor.
@@ -67,8 +69,15 @@ VStack(alignment: .leading, spacing: 10) {
 .fixedSize(horizontal: false, vertical: true)
 ```
 
-Keep the menu's vertical size content-driven so the hosting window cannot
-preserve surplus height when provider/account rows or quota details disappear.
+Keep the menu's vertical size content-driven and measure it with a background
+`GeometryReader` feeding `MenuWindowSizingBridge`. `.fixedSize` alone does not
+reliably resize the native MenuBarExtra window. The bridge applies the measured
+content size after layout and on native resize/key events, preserving the top
+edge. It must only touch its attached window, never discover windows globally
+or resize Settings. See ledger decision 0005 and `MenuWindowSizingTests`.
+
+Run `bash scripts/test_menu_window_sizing.sh` to verify a real MenuBarExtra with
+the production Settings toggle actions; this check also gates release CI.
 
 Rules:
 
